@@ -86,7 +86,13 @@ export default function Wallet() {
           try {
             const response = await fetch('/api/auth/check-session')
             if (response.ok) {
-              const data = await response.json()
+              const rawBody = await response.text()
+              let data: any = null
+              try {
+                data = rawBody ? JSON.parse(rawBody) : null
+              } catch {
+                data = { authenticated: false }
+              }
               if (data.authenticated) {
                 // User is authenticated via MongoDB, allow access
                 setUser({ email: data.user.email, uid: data.user.firebaseUid })
@@ -128,7 +134,13 @@ export default function Wallet() {
       
       const response = await fetch(`/api/user/deposits?userId=${user.uid}`)
       if (response.ok) {
-        const data = await response.json()
+        const rawBody = await response.text()
+        let data: any = null
+        try {
+          data = rawBody ? JSON.parse(rawBody) : null
+        } catch {
+          data = { deposits: [] }
+        }
         setDepositHistory(data.deposits || [])
       }
     } catch (error) {
@@ -655,11 +667,18 @@ export default function Wallet() {
                           })
                         })
 
+                        const rawBody = await response.text()
+                        let responseData: any = null
+                        try {
+                          responseData = rawBody ? JSON.parse(rawBody) : null
+                        } catch {
+                          responseData = { error: 'Invalid response' }
+                        }
+
                         if (response.ok) {
                           setWithdrawalConfirmed(true)
                         } else {
-                          const errorData = await response.json()
-                          alert(errorData.error || 'Withdrawal request failed')
+                          alert(responseData?.error || 'Withdrawal request failed')
                         }
                       } catch (error) {
                         console.error('Withdrawal error:', error)

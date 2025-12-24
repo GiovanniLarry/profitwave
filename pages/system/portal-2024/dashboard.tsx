@@ -682,15 +682,21 @@ export default function AdminDashboard() {
       console.log('Response status:', response.status)
       console.log('Response ok:', response.ok)
       
+      const rawBody = await response.text()
+      let responseData: any = null
+      try {
+        responseData = rawBody ? JSON.parse(rawBody) : null
+      } catch {
+        responseData = { error: 'Invalid response' }
+      }
+      
       if (response.ok) {
-        const responseData = await response.json()
         console.log('Response data:', responseData)
         await fetchDashboardData()
         alert(`User ${action} successful`)
       } else {
-        const errorData = await response.json()
-        console.error('API Error:', errorData)
-        alert(`Failed to ${action} user: ${errorData.error || 'Unknown error'}`)
+        console.error('API Error:', responseData)
+        alert(`Failed to ${action} user: ${responseData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Network error:', error)

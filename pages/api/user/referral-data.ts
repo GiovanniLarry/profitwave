@@ -116,7 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Continue with default values
       }
 
-      const referralLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://your-domain.com'}?ref=${referralCode}`
+      const referralLink = `${process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_URL || 'https://profitwave.vercel.app'}?ref=${referralCode}`
 
       const responseData = {
         referralCode,

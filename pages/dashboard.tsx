@@ -235,7 +235,13 @@ export default function DashboardPage() {
       
       const response = await fetch(`/api/user/deposits?userId=${user.uid}`)
       if (response.ok) {
-        const data = await response.json()
+        const rawBody = await response.text()
+        let data: any = null
+        try {
+          data = rawBody ? JSON.parse(rawBody) : null
+        } catch {
+          data = { deposits: [] }
+        }
         setDepositHistory(data.deposits || [])
       }
     } catch (error) {
@@ -257,7 +263,13 @@ export default function DashboardPage() {
       })
       
       if (response.ok) {
-        const data = await response.json()
+        const rawBody = await response.text()
+        let data: any = null
+        try {
+          data = rawBody ? JSON.parse(rawBody) : null
+        } catch {
+          data = { statistics: { totalInvested: 0, monthlyReturns: 0, dailyReturns: 0, activeProjects: 0, totalReturns: 0 } }
+        }
         setInvestmentStats({
           totalInvested: data.statistics.totalInvested,
           monthlyReturns: data.statistics.monthlyReturns,
