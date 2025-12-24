@@ -120,9 +120,10 @@ export default function DepositConfirmation() {
       return unsubscribe
     }
 
-    const unsubscribe = await checkAuth()
+    ;(async () => {
+      const unsubscribe = await checkAuth()
 
-    // Get deposit data from query params or localStorage
+      // Get deposit data from query params or localStorage
     const { amount, method } = router.query
     if (amount && method) {
       const depositAmount = parseFloat(amount as string)
@@ -152,7 +153,7 @@ export default function DepositConfirmation() {
       } else {
         router.push('/wallet')
       }
-    }
+    })()
 
     return () => {
       if (unsubscribe && typeof unsubscribe === 'function') {
