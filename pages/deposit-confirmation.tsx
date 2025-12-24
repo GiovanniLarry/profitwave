@@ -120,45 +120,48 @@ export default function DepositConfirmation() {
       return unsubscribe
     }
 
-    ;(async () => {
+    const initializeAuth = async () => {
       const unsubscribe = await checkAuth()
 
       // Get deposit data from query params or localStorage
-    const { amount, method } = router.query
-    if (amount && method) {
-      const depositAmount = parseFloat(amount as string)
-      if (depositAmount < 6500) {
-        router.push('/wallet')
-        return
-      }
-      const methodData = paymentMethods[method as keyof typeof paymentMethods]
-      const depositData = {
-        amount: depositAmount,
-        method: methodData.name,
-        merchantName: methodData.merchantName,
-        merchantNumber: methodData.merchantNumber
-      }
-      setDepositData(depositData)
-    } else {
-      // Fallback to localStorage
-      const storedDeposit = localStorage.getItem('pendingDeposit')
-      if (storedDeposit) {
-        const data = JSON.parse(storedDeposit)
-        if (data.amount < 6500) {
-          localStorage.removeItem('pendingDeposit')
+      const { amount, method } = router.query
+      if (amount && method) {
+        const depositAmount = parseFloat(amount as string)
+        if (depositAmount < 6500) {
           router.push('/wallet')
           return
         }
-        setDepositData(data)
+        const methodData = paymentMethods[method as keyof typeof paymentMethods]
+        const depositData = {
+          amount: depositAmount,
+          method: methodData.name,
+          merchantName: methodData.merchantName,
+          merchantNumber: methodData.merchantNumber
+        }
+        setDepositData(depositData)
       } else {
-        router.push('/wallet')
+        // Fallback to localStorage
+        const storedDeposit = localStorage.getItem('pendingDeposit')
+        if (storedDeposit) {
+          const data = JSON.parse(storedDeposit)
+          if (data.amount < 6500) {
+            localStorage.removeItem('pendingDeposit')
+            router.push('/wallet')
+            return
+          }
+          setDepositData(data)
+        } else {
+          router.push('/wallet')
+        }
       }
-    })()
+
+      return unsubscribe
+    }
+
+    initializeAuth()
 
     return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
-        unsubscribe()
-      }
+      // Cleanup if needed
     }
   }, [router])
 
