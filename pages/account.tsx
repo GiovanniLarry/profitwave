@@ -40,6 +40,7 @@ export default function Account() {
   const [showContactModal, setShowContactModal] = useState(false)
   const [copied, setCopied] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [contactForm, setContactForm] = useState({ subject: '', message: '' })
 
   useEffect(() => {
     const checkAuth = async () => {
