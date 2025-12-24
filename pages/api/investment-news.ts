@@ -34,43 +34,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           .limit(20) // Limit to latest 20 news items
           .toArray()
 
-        return res.status(200).json({ 
-          news: allNews.map(item => ({
-            id: item._id,
-            title: item.title,
-            content: item.content,
-            category: item.category,
-            importance: item.importance,
-            createdAt: item.createdAt
-          }))
-        })
+        // If we have admin posts, return them
+        if (allNews.length > 0) {
+          return res.status(200).json({ 
+            news: allNews.map(item => ({
+              id: item._id,
+              title: item.title,
+              content: item.content,
+              category: item.category,
+              importance: item.importance,
+              createdAt: item.createdAt,
+              publishedBy: item.publishedBy || 'admin'
+            })),
+            source: 'mongodb'
+          })
+        }
       } catch (mongoError) {
         console.error('MongoDB error fetching news:', mongoError)
-        return res.status(500).json({ error: 'MongoDB error' })
+        // Fall through to sample news
       }
-    } else {
-      // Fallback to sample news if MongoDB not configured
-      const sampleNews = [
-        {
-          id: '1',
-          title: 'Market Update: Tech Stocks Rally',
-          content: 'Technology stocks showed strong performance today with major gains in software and semiconductor sectors.',
-          category: 'markets',
-          importance: 'high',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '2',
-          title: 'New Investment Opportunities Available',
-          content: 'We are pleased to announce new investment opportunities in renewable energy and emerging markets.',
-          category: 'opportunities',
-          importance: 'normal',
-          createdAt: new Date(Date.now() - 3600000).toISOString()
-        }
-      ]
-
-      return res.status(200).json({ news: sampleNews })
     }
+
+    // Fallback: Return sample news (this will be used if MongoDB is not configured or has no admin posts)
+    const sampleNews = [
+      {
+        id: '1',
+        title: 'ProfitWave Investment Update',
+        content: 'New investment opportunities are now available in renewable energy and technology sectors. Contact admin for details.',
+        category: 'opportunities',
+        importance: 'high',
+        createdAt: new Date().toISOString(),
+        publishedBy: 'admin'
+      },
+      {
+        id: '2',
+        title: 'Market Performance Report',
+        content: 'Our investment portfolios are showing strong performance this quarter with average returns exceeding expectations.',
+        category: 'performance',
+        importance: 'normal',
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+        publishedBy: 'admin'
+      },
+      {
+        id: '3',
+        title: 'System Maintenance Notice',
+        content: 'Scheduled maintenance will occur this weekend. All services will remain operational.',
+        category: 'system',
+        importance: 'low',
+        createdAt: new Date(Date.now() - 7200000).toISOString(),
+        publishedBy: 'admin'
+      }
+    ]
+
+    return res.status(200).json({ 
+      news: sampleNews,
+      source: 'fallback',
+      message: 'Using admin sample news - MongoDB not configured or no admin posts found'
+    })
   } catch (error) {
     console.error('Investment news API error:', error)
     return res.status(500).json({ error: 'Internal server error' })

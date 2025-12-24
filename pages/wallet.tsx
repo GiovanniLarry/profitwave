@@ -143,29 +143,31 @@ export default function Wallet() {
       console.log('Current user email:', user.email)
 
       const token = await user.getIdToken()
-      console.log('Got token, fetching direct balance...')
       
-      // Use standardized balance endpoint
-      const response = await fetch(`/api/user/balance?uid=${user.uid}`, {
+      // Fetch user balance
+      const balanceResponse = await fetch(`/api/user/balance?uid=${user.uid}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-
-      console.log('Direct balance API response status:', response.status)
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Direct balance API response data:', data)
+      
+      if (balanceResponse.ok) {
+        const balanceData = await balanceResponse.json()
+        console.log('Balance response:', balanceData)
         
-        const newBalance = data.balance || 0
-        console.log('Setting user balance to:', newBalance)
-        setBalance(newBalance)
-        console.log('Direct balance set successfully:', newBalance)
+        if (balanceData.success) {
+          setBalance(balanceData.balance)
+          console.log('Balance set to:', balanceData.balance)
+          
+          if (balanceData.realtimeUpdate) {
+            console.log('Balance updated in real-time from admin deposit')
+          }
+        } else {
+          console.error('Balance API returned failure:', balanceData)
+          setBalance(0)
+        }
       } else {
-        console.error('Failed to fetch direct balance:', response.statusText)
-        const errorText = await response.text()
-        console.error('Error response:', errorText)
+        console.error('Failed to fetch balance, status:', balanceResponse.status)
         setBalance(0)
       }
       
