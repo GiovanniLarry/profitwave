@@ -155,7 +155,7 @@ export default function DepositConfirmation() {
     }
 
     return () => {
-      if (typeof unsubscribe === 'function') {
+      if (unsubscribe && typeof unsubscribe === 'function') {
         unsubscribe()
       }
     }

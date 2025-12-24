@@ -1198,7 +1198,7 @@ export default function AdminDashboard() {
                     ) : (
                       notifications.map((notification) => (
                         <div
-                          key={notification._id}
+                          key={notification.id}
                           onClick={() => handleNotificationClick(notification)}
                           className={`p-4 border-b border-white/10 cursor-pointer transition-colors hover:bg-white/5 ${
                             !notification.read ? 'bg-purple-500/10' : ''
@@ -1214,7 +1214,7 @@ export default function AdminDashboard() {
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">{notification.message}</p>
                               <p className="text-xs text-gray-400 mt-1">
-                                {new Date(notification.createdAt).toLocaleString()}
+                                {new Date(notification.timestamp).toLocaleString()}
                               </p>
                             </div>
                           </div>
@@ -1403,7 +1403,7 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-sm font-mono">
-                              {user.uniqueId || 'N/A'}
+                              {user._id || 'N/A'}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
@@ -1506,7 +1506,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center space-x-2">
                               <div className="font-medium">{user.fullName}</div>
                               <div className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs font-mono">
-                                {user.uniqueId || 'N/A'}
+                                {user._id || 'N/A'}
                               </div>
                             </div>
                             <div className="text-sm text-gray-400">{user.email}</div>
