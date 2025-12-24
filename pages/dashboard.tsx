@@ -10,7 +10,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faWallet } from '@fortawesome/free-solid-svg-icons'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { getAuth } from 'firebase/auth'
 import CustomerChat from '../components/CustomerChat'
 import dashboardStyles from '../components/Dashboard.module.css'
 import { auth } from '../lib/firebase'
@@ -213,7 +212,6 @@ export default function DashboardPage() {
 
   const fetchDepositHistory = async () => {
     try {
-      const auth = getAuth()
       const user = auth.currentUser
       if (!user) return
       
@@ -235,7 +233,6 @@ export default function DashboardPage() {
 
   const fetchInvestments = async () => {
     try {
-      const auth = getAuth()
       const user = auth.currentUser
       if (!user) return
       
@@ -269,7 +266,6 @@ export default function DashboardPage() {
 
   const fetchUnreadCount = async () => {
     try {
-      const auth = getAuth()
       const user = auth.currentUser
       if (!user) return
       
@@ -286,12 +282,10 @@ export default function DashboardPage() {
   useEffect(() => {
     // Initialize data with lazy loading
     const initializeData = async () => {
-      const auth = getAuth()
-      const currentUser = auth.currentUser
-      
-      if (currentUser) {
-        console.log('User authenticated, starting lazy data fetch')
-        // Set loading to false immediately to show UI
+      const user = auth.currentUser
+      if (user) {
+        console.log('User already authenticated, starting data fetch')
+        setUser(user)
         setLoading(false)
         
         // Fetch critical data first
@@ -310,6 +304,7 @@ export default function DashboardPage() {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
           if (user) {
             console.log('User authenticated, starting lazy data fetch')
+            setUser(user)
             setLoading(false)
             
             await fetchUserData()
@@ -381,7 +376,6 @@ export default function DashboardPage() {
 
   const fetchUserData = async () => {
     try {
-      const auth = getAuth()
       const user = auth.currentUser
       if (!user) {
         console.log('No current user found')
@@ -456,7 +450,6 @@ export default function DashboardPage() {
 
   const fetchReferralData = async () => {
     try {
-      const auth = getAuth()
       const user = auth.currentUser
       if (!user) return
       
@@ -473,7 +466,6 @@ export default function DashboardPage() {
   }
 
   const generateReferralCode = () => {
-    const auth = getAuth()
     const currentUser = auth.currentUser
     if (!currentUser) return
     
@@ -649,7 +641,6 @@ export default function DashboardPage() {
                   <button 
                     className="flex items-center space-x-3 p-3 rounded-lg text-gray-300 hover:bg-white/10 transition-colors w-full"
                     onClick={() => {
-                      const auth = getAuth()
                       auth.signOut()
                       router.push('/get-started')
                     }}
@@ -724,7 +715,6 @@ export default function DashboardPage() {
                           // Refresh balance when showing
                           try {
                             console.log('Refreshing balance...')
-                            const auth = getAuth()
                             const token = await auth.currentUser?.getIdToken()
                             if (token) {
                               const response = await fetch('/api/user/direct-balance', {
