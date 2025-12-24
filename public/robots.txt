@@ -1,0 +1,33 @@
+User-agent: *
+Allow: /
+
+# Disallow admin and system paths from being indexed
+Disallow: /admin/
+Disallow: /system/
+Disallow: /api/admin/
+
+# Disallow sensitive directories
+Disallow: /_next/
+Disallow: /static/
+
+# Allow main site content
+Allow: /$
+Allow: /about
+Allow: /features
+Allow: /pricing
+Allow: /security
+Allow: /api
+Allow: /blog
+Allow: /careers
+Allow: /press
+Allow: /privacy
+Allow: /terms
+Allow: /cookie-policy
+Allow: /compliance
+Allow: /documentation
+Allow: /tutorials
+Allow: /support
+Allow: /community
+
+# Sitemap location (if you have one)
+# Sitemap: https://yourdomain.com/sitemap.xml
