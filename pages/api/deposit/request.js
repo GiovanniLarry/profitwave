@@ -1,8 +1,8 @@
-import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
-import { MongoClient } from 'mongodb'
-import multer from 'multer'
-import path from 'path'
+const { initializeApp } = require('firebase/app')
+const { getAuth } = require('firebase/auth')
+const { MongoClient } = require('mongodb')
+const multer = require('multer')
+const path = require('path')
 
 // Firebase initialization
 const firebaseConfig = {
