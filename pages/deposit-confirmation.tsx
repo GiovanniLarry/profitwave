@@ -120,7 +120,7 @@ export default function DepositConfirmation() {
       return unsubscribe
     }
 
-    const unsubscribe = checkAuth()
+    const unsubscribe: (() => void) | undefined = checkAuth()
 
     // Get deposit data from query params or localStorage
     const { amount, method } = router.query
