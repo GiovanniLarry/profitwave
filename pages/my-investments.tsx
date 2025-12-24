@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faWallet, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 import Link from 'next/link'
-import { getAuth } from 'firebase/auth'
 import { Home, TrendingUp, User, ArrowLeft as ArrowLeftIcon, Check, AlertCircle, Clock, Target, DollarSign } from 'lucide-react'
 import { auth } from '../lib/firebase'
 import styles from '../components/Investments.module.css'
@@ -75,7 +74,6 @@ const MyInvestmentsPage = () => {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const auth = getAuth()
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       if (currentUser) {
         setUser(currentUser)

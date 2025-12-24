@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faWallet, faArrowDown, faArrowUp, faHistory, faCreditCard, faBank, faMobileAlt, faCheck } from '@fortawesome/free-solid-svg-icons'
 import Link from 'next/link'
-import { getAuth } from 'firebase/auth'
 import { Home, TrendingUp, User, ArrowLeft, Check, ArrowUp, Eye, EyeOff } from 'lucide-react'
 import CustomerChat from '../components/CustomerChat'
 import { auth } from '../lib/firebase'
@@ -41,8 +40,6 @@ export default function Wallet() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const auth = getAuth()
-      
       // First check Firebase auth
       const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
         if (firebaseUser) {
@@ -115,7 +112,6 @@ export default function Wallet() {
 
   const fetchDepositHistory = async () => {
     try {
-      const auth = getAuth()
       const user = auth.currentUser
       if (!user) return
       
@@ -137,7 +133,6 @@ export default function Wallet() {
 
   const fetchUserData = async () => {
     try {
-      const auth = getAuth()
       const user = auth.currentUser
       if (!user) {
         console.log('No current user found')
@@ -636,7 +631,6 @@ export default function Wallet() {
 
                       setIsLoading(true)
                       try {
-                        const auth = getAuth()
                         const token = await auth.currentUser?.getIdToken()
                         
                         const response = await fetch('/api/withdrawal/request', {

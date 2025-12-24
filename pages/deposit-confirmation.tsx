@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowLeft, faUpload, faCheck, faMobileAlt, faImage, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import Link from 'next/link'
-import { getAuth } from 'firebase/auth'
 import { useRouter } from 'next/router'
 import { auth } from '../lib/firebase'
 
@@ -58,8 +57,6 @@ export default function DepositConfirmation() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const auth = getAuth()
-      
       // First check Firebase auth
       const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
         if (firebaseUser) {
@@ -186,7 +183,6 @@ export default function DepositConfirmation() {
     setError('')
 
     try {
-      const auth = getAuth()
       let token = null
       
       // Try to get token from Firebase auth first
