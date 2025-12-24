@@ -960,11 +960,11 @@ export default function DashboardPage() {
                                 {article.title}
                               </h3>
                               <span className={`px-3 py-1 rounded-full text-xs font-bold flex-shrink-0 ${
-                                article.importance === 'high' ? 'bg-red-500/30 text-red-300 border border-red-500/50' :
-                                article.importance === 'normal' ? 'bg-blue-500/30 text-blue-300 border border-blue-500/50' :
+                                article.impact === 'high' ? 'bg-red-500/30 text-red-300 border border-red-500/50' :
+                                article.impact === 'medium' ? 'bg-blue-500/30 text-blue-300 border border-blue-500/50' :
                                 'bg-gray-500/30 text-gray-300 border border-gray-500/50'
                               }`}>
-                                {article.importance || 'normal'}
+                                {article.impact || 'normal'}
                               </span>
                             </div>
                             <p className="text-gray-200 text-sm leading-relaxed mb-3">
