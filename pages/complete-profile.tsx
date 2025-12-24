@@ -72,7 +72,13 @@ export default function CompleteProfilePage() {
       console.log('Username check response status:', response.status)
       
       if (response.ok) {
-        const data = await response.json()
+        const rawBody = await response.text()
+        let data: any = null
+        try {
+          data = rawBody ? JSON.parse(rawBody) : null
+        } catch {
+          data = { exists: false }
+        }
         console.log('Username check response data:', data)
         return !data.exists
       }
@@ -108,7 +114,13 @@ export default function CompleteProfilePage() {
         try {
           const response = await fetch(`/api/user/referral-data?userId=${user.uid}`)
           if (response.ok) {
-            const data = await response.json()
+            const rawBody = await response.text()
+            let data: any = null
+            try {
+              data = rawBody ? JSON.parse(rawBody) : null
+            } catch {
+              data = {}
+            }
             setReferralData(data)
           }
         } catch (error) {
@@ -273,24 +285,29 @@ export default function CompleteProfilePage() {
       })
 
       console.log('📡 API response status:', response.status)
-      const responseData = await response.json()
+      // Read the body ONCE safely (supports non-JSON responses too)
+      const rawBody = await response.text()
+      let responseData: any = null
+      try {
+        responseData = rawBody ? JSON.parse(rawBody) : null
+      } catch {
+        responseData = { message: rawBody }
+      }
       console.log('📦 API response data:', responseData)
 
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error('❌ API Error Response:', errorData)
-        
-        if (errorData.error && errorData.error.includes('username')) {
-          setErrors([errorData.error])
+        console.error('❌ API Error Response:', responseData)
+
+        if (responseData?.error && String(responseData.error).includes('username')) {
+          setErrors([responseData.error])
           return
         }
-        
-        // Show more specific error message
-        const errorMessage = errorData.error || errorData.message || 'Failed to save profile'
+
+        const errorMessage = responseData?.error || responseData?.message || 'Failed to save profile'
         console.error('❌ Profile save error details:', {
           status: response.status,
           statusText: response.statusText,
-          error: errorData
+          error: responseData,
         })
         setErrors([errorMessage])
         return
