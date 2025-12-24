@@ -968,13 +968,13 @@ export default function DashboardPage() {
                               </span>
                             </div>
                             <p className="text-gray-200 text-sm leading-relaxed mb-3">
-                              {article.content}
+                              {article.summary}
                             </p>
                             <div className="flex items-center justify-between text-xs text-gray-400">
                               <span className="px-2 py-1 bg-purple-500/20 rounded-full text-purple-300">
                                 {article.category || 'general'}
                               </span>
-                              <span>{new Date(article.createdAt).toLocaleDateString()}</span>
+                              <span>{article.time}</span>
                             </div>
                           </div>
                         </div>
