@@ -434,8 +434,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             res.status(404).json({ error: 'User not found' })
           }
         } catch (mongoError) {
-          console.error('❌ MongoDB error during PUT:', mongoError)
-          res.status(500).json({ error: 'Internal server error', details: mongoError.message })
+          console.error('❌ MongoDB error during PUT, falling back to in-memory:', mongoError)
+          // Fallback to in-memory storage for immediate functionality
+          try {
+            const existingUser = inMemoryUsers.get(userData.firebaseUid)
+            
+            if (existingUser) {
+              // Update existing user in memory
+              const updatedUser = { ...user, createdAt: existingUser.createdAt }
+              inMemoryUsers.set(userData.firebaseUid, updatedUser)
+              console.log('✅ User updated in in-memory fallback')
+              res.status(200).json({ message: 'User updated successfully (in-memory fallback)', user: updatedUser })
+            } else {
+              // Create new user in memory
+              inMemoryUsers.set(userData.firebaseUid, user)
+              console.log('✅ User created in in-memory fallback')
+              res.status(201).json({ message: 'User created successfully (in-memory fallback)', user })
+            }
+          } catch (memoryError) {
+            console.error('❌ In-memory fallback also failed:', memoryError)
+            res.status(500).json({ error: 'Internal server error', details: mongoError.message })
+          }
         }
       } else {
         console.log('🗄️ Using in-memory storage for PUT...')
