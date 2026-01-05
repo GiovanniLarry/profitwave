@@ -6,9 +6,45 @@ import { auth } from '../../../lib/firebase'
 
 // Firebase configuration is handled in lib/firebase.ts
 
-// MongoDB connection
+// Check if MongoDB URI is configured and not using placeholder
+const isMongoDBConfigured = process.env.MONGODB_URI && !process.env.MONGODB_URI.includes('username:password')
+
+// Only throw error if we're in production and don't have MongoDB
+if (process.env.NODE_ENV === 'production' && !isMongoDBConfigured) {
+  throw new Error('MongoDB URI is required in production')
+}
+
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/profitwave'
-const client = new MongoClient(uri)
+const options = {}
+
+let client: MongoClient
+let clientPromise: Promise<MongoClient>
+
+// Only initialize MongoDB if it's configured
+if (isMongoDBConfigured) {
+  if (process.env.NODE_ENV === 'development') {
+    let globalWithMongo = global as typeof global & {
+      _mongoClientPromise?: Promise<MongoClient>
+    }
+
+    if (!globalWithMongo._mongoClientPromise) {
+      client = new MongoClient(uri, options)
+      globalWithMongo._mongoClientPromise = client.connect()
+    }
+    clientPromise = globalWithMongo._mongoClientPromise
+  } else {
+    client = new MongoClient(uri, options)
+    clientPromise = client.connect()
+  }
+}
+
+async function getDatabase() {
+  if (!clientPromise) {
+    throw new Error('MongoDB is not configured')
+  }
+  const client = await clientPromise
+  return client.db('profitwave')
+}
 
 // Configure multer for file uploads
 const upload = multer({
@@ -119,10 +155,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    // Connect to MongoDB
+    // Connect to MongoDB using standardized connection
     console.log('Connecting to MongoDB...')
-    await client.connect()
-    dbConnection = client.db()
+    dbConnection = await getDatabase()
     const depositsCollection = dbConnection.collection('deposits')
     const usersCollection = dbConnection.collection('users')
 
@@ -242,14 +277,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     
     res.status(500).json(errorDetails)
   } finally {
-    if (dbConnection) {
-      try {
-        await client.close()
-        console.log('MongoDB connection closed')
-      } catch (closeError) {
-        console.error('Error closing MongoDB connection:', closeError)
-      }
-    }
+    // Connection pooling handled by the standardized connection pattern
   }
 }
 

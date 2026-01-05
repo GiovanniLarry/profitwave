@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faWallet, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { getAuth } from 'firebase/auth'
 import { Home, TrendingUp, User, ArrowLeft as ArrowLeftIcon, Check, AlertCircle } from 'lucide-react'
 import { auth } from '../../lib/firebase'
 
@@ -36,7 +35,7 @@ const InvestmentAmountPage = () => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
-  // Base investment plans
+  // Base investment plans (matching invest.tsx)
   const baseInvestmentPlans: InvestmentPlan[] = [
     {
       id: 'special-6500',
@@ -46,7 +45,7 @@ const InvestmentAmountPage = () => {
       returnAmount: 9750,
       period: 28,
       dailyReturn: 116,
-      image: 'https://images.unsplash.com/photo-1633412802994-5c843bb244d6?w=1200&h=800&fit=crop&crop=center&auto=format&q=100',
+      image: '/card1.jpeg',
       risk: 'low',
       description: 'Exclusive premium investment with guaranteed tiered returns',
       features: ['25% return in first 14 days', '50% + principal after 28 days', 'Zero risk', 'Instant withdrawal', 'Premium support', 'Insurance backed']
@@ -59,7 +58,7 @@ const InvestmentAmountPage = () => {
       returnAmount: 15000,
       period: 28,
       dailyReturn: 179,
-      image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&h=800&fit=crop&crop=center&auto=format&q=100',
+      image: '/card2.jpeg',
       risk: 'low',
       description: 'Bronze tier investment with solid returns (~15 EUR)',
       features: ['25% return in first 14 days', '50% + principal after 28 days', 'Low risk', 'Quick withdrawal', 'Bronze status', 'Great value']
@@ -72,54 +71,105 @@ const InvestmentAmountPage = () => {
       returnAmount: 19500,
       period: 28,
       dailyReturn: 232,
-      image: 'https://images.unsplash.com/photo-1621974789855-9c2a0a7236a3?w=1200&h=800&fit=crop&crop=center&auto=format&q=100',
-      risk: 'medium',
-      description: 'Silver tier investment with enhanced returns (~19 EUR)',
-      features: ['25% return in first 14 days', '50% + principal after 28 days', 'Medium risk', 'Fast withdrawal', 'Silver status', 'Better returns']
+      image: '/card3.jpeg',
+      risk: 'low',
+      description: 'Silver tier investment with balanced returns (~20 EUR)',
+      features: ['25% return in first 14 days', '50% + principal after 28 days', 'Very low risk', 'Instant withdrawal', 'Silver benefits', 'Popular choice']
     },
     {
-      id: 'plan-25000',
+      id: 'plan-17000',
       name: 'Gold Investment Plan',
-      minAmount: 25000,
-      maxAmount: 25000,
-      returnAmount: 37500,
+      minAmount: 17000,
+      maxAmount: 17000,
+      returnAmount: 25500,
       period: 28,
-      dailyReturn: 446,
-      image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&h=800&fit=crop&crop=center&auto=format&q=100',
-      risk: 'medium',
-      description: 'Gold tier investment with premium returns (~38 EUR)',
-      features: ['25% return in first 14 days', '50% + principal after 28 days', 'Medium risk', 'Priority withdrawal', 'Gold status', 'High returns']
+      dailyReturn: 304,
+      image: '/card4.jpeg',
+      risk: 'low',
+      description: 'Gold tier investment with excellent returns (~25 EUR)',
+      features: ['25% return in first 14 days', '50% + principal after 28 days', 'Zero risk', 'Instant withdrawal', 'Gold status', 'Premium returns']
+    },
+    {
+      id: 'plan-20000',
+      name: 'Platinum Investment Plan',
+      minAmount: 20000,
+      maxAmount: 20000,
+      returnAmount: 30000,
+      period: 28,
+      dailyReturn: 357,
+      image: '/card5.jpeg',
+      risk: 'low',
+      description: 'Platinum tier investment with superior returns (~30 EUR)',
+      features: ['25% return in first 14 days', '50% + principal after 28 days', 'Zero risk', 'Instant withdrawal', 'Platinum perks', 'High returns']
+    },
+    {
+      id: 'plan-27000',
+      name: 'Diamond Investment Plan',
+      minAmount: 27000,
+      maxAmount: 27000,
+      returnAmount: 40500,
+      period: 28,
+      dailyReturn: 482,
+      image: '/card6.jpeg',
+      risk: 'low',
+      description: 'Diamond tier investment with maximum guaranteed returns (~40 EUR)',
+      features: ['25% return in first 14 days', '50% + principal after 28 days', 'Zero risk', 'Instant withdrawal', 'Diamond exclusive', 'Maximum returns']
+    },
+    {
+      id: 'plan-33000',
+      name: 'Elite Investment Plan',
+      minAmount: 33000,
+      maxAmount: 33000,
+      returnAmount: 49500,
+      period: 28,
+      dailyReturn: 591,
+      image: '/card7.jpeg',
+      risk: 'low',
+      description: 'Elite tier investment for serious investors (~50 EUR)',
+      features: ['25% return in first 14 days', '50% + principal after 28 days', 'Zero risk', 'Instant withdrawal', 'Elite benefits', 'Professional grade']
+    },
+    {
+      id: 'plan-40000',
+      name: 'Royal Investment Plan',
+      minAmount: 40000,
+      maxAmount: 40000,
+      returnAmount: 60000,
+      period: 28,
+      dailyReturn: 714,
+      image: '/card8.jpeg',
+      risk: 'low',
+      description: 'Royal tier investment with exceptional returns (~60 EUR)',
+      features: ['25% return in first 14 days', '50% + principal after 28 days', 'Zero risk', 'Instant withdrawal', 'Royal privileges', 'Exceptional service']
     },
     {
       id: 'plan-50000',
-      name: 'Platinum Investment Plan',
+      name: 'Mogul Investment Plan',
       minAmount: 50000,
       maxAmount: 50000,
       returnAmount: 75000,
       period: 28,
       dailyReturn: 893,
-      image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&h=800&fit=crop&crop=center&auto=format&q=100',
-      risk: 'high',
-      description: 'Platinum tier investment with maximum returns (~75 EUR)',
-      features: ['25% return in first 14 days', '50% + principal after 28 days', 'High risk', 'Instant withdrawal', 'Platinum status', 'Maximum returns']
+      image: '/card9.jpeg',
+      risk: 'low',
+      description: 'Mogul tier investment for high-achieving investors (~75 EUR)',
+      features: ['25% return in first 14 days', '50% + principal after 28 days', 'Zero risk', 'Instant withdrawal', 'Mogul status', 'High performance']
     },
     {
-      id: 'plan-100000',
-      name: 'Diamond Investment Plan',
-      minAmount: 100000,
-      maxAmount: 100000,
-      returnAmount: 150000,
+      id: 'plan-67000',
+      name: 'Titan Investment Plan',
+      minAmount: 67000,
+      maxAmount: 67000,
+      returnAmount: 100500,
       period: 28,
-      dailyReturn: 1786,
-      image: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&h=800&fit=crop&crop=center&auto=format&q=100',
-      risk: 'high',
-      description: 'Diamond tier investment for elite investors (~150 EUR)',
-      features: ['25% return in first 14 days', '50% + principal after 28 days', 'High risk', 'VIP withdrawal', 'Diamond status', 'Elite returns']
+      dailyReturn: 1196,
+      image: '/card10.jpeg',
+      risk: 'low',
+      description: 'Titan tier investment with legendary returns (~100 EUR)',
+      features: ['25% return in first 14 days', '50% + principal after 28 days', 'Zero risk', 'Instant withdrawal', 'Titan exclusive', 'Legendary returns']
     }
   ]
 
   useEffect(() => {
-    const auth = getAuth()
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       if (currentUser) {
         setUser(currentUser)
@@ -181,7 +231,6 @@ const InvestmentAmountPage = () => {
     setError('')
 
     try {
-      const auth = getAuth()
       const token = await auth.currentUser?.getIdToken()
       
       const response = await fetch('/api/investments/create', {

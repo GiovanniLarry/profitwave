@@ -21,7 +21,6 @@ export default function Navbar() {
       name: 'Company', 
       href: '#',
       dropdown: [
-        { name: 'About', href: '/about' },
         { name: 'Blog', href: '/blog' },
         { name: 'Press', href: '/press' }
       ]

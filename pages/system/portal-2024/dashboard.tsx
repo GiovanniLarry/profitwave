@@ -488,17 +488,23 @@ export default function AdminDashboard() {
 
   const fetchPendingDeposits = async () => {
     try {
+      console.log('Fetching pending deposits...')
       const response = await fetch('/api/admin/pending-deposits', {
         headers: {
           'Authorization': 'Bearer admin-token'
         }
       })
       
+      console.log('Pending deposits response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Pending deposits data:', data)
         setPendingDeposits(data.pendingDeposits || [])
+        console.log('Set pending deposits:', data.pendingDeposits?.length || 0, 'items')
       } else {
-        console.error('Failed to fetch pending deposits')
+        const errorText = await response.text()
+        console.error('Failed to fetch pending deposits:', response.status, errorText)
       }
     } catch (error) {
       console.error('Error fetching pending deposits:', error)
