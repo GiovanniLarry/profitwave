@@ -197,13 +197,13 @@ export default function Wallet() {
       const methodData = {
         'orange-money': {
           name: 'Orange Money',
-          merchantName: 'ProfitWave Cameroon',
-          merchantNumber: '+237 695 814 541'
+          merchantName: 'MONIQUE NADEGE MECK',
+          merchantNumber: '+237 655 621 356'
         },
         'mtn-mobile-money': {
           name: 'MTN Mobile Money',
-          merchantName: 'ProfitWave Cameroon',
-          merchantNumber: '+237 695 814 541'
+          merchantName: 'DELPHINE NONINDONG',
+          merchantNumber: '+237 674 281 152'
         }
       }
       
@@ -383,7 +383,7 @@ export default function Wallet() {
                       {method.id === 'mtn-mobile-money' && (
                         <>
                           <p><span className="font-semibold">Contact:</span> DELPHINE NONINDONG</p>
-                          <p><span className="font-semibold">Phone:</span> 237655621356</p>
+                          <p><span className="font-semibold">Phone:</span> 237674281152</p>
                         </>
                       )}
                     </div>
