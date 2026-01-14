@@ -29,25 +29,25 @@ export default function DepositConfirmation() {
   const paymentMethods = {
     'orange-money': {
       name: 'Orange Money',
-      merchantName: 'ProfitWave Cameroon',
-      merchantNumber: '+237 695 814 541',
+      merchantName: 'MONIQUE NADEGE MECK',
+      merchantNumber: '+237 655621356',
       instructions: [
         'Go to your Orange Money app',
         'Select "Send Money"',
-        'Enter merchant number: +237 695 814 541',
+        'Enter merchant number: +237 655621356',
         'Enter the amount',
         'Confirm transaction with your PIN',
         'Take a screenshot showing the payment ID (this is the transaction ID you receive in the confirmation message)'
       ]
     },
     'mtn-mobile-money': {
-      name: 'MTN Mobile Money',
+      name: 'DELPHINE NONINDONG',
       merchantName: 'ProfitWave Cameroon',
-      merchantNumber: '+237 695 814 541',
+      merchantNumber: '+237 674281152',
       instructions: [
         'Go to your MTN Mobile Money app',
         'Select "Send Money"',
-        'Enter merchant number: +237 695 814 541',
+        'Enter merchant number: +237 674281152',
         'Enter the amount',
         'Confirm transaction with your PIN',
         'Take a screenshot showing the payment ID (this is the transaction ID you receive in the confirmation message)'
