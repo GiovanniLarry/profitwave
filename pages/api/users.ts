@@ -191,72 +191,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               { $set: { ...user, createdAt: existingUser.createdAt } }
             )
             console.log('User updated in MongoDB')
-            
-            // Handle referral tracking for existing users completing profile
-            if (userData.referralCode && !existingUser.profileCompleted) {
-              console.log('🎯 Processing referral for profile completion')
-              console.log('📝 Referral code provided:', userData.referralCode)
-              console.log('👤 Referred user ID:', userData.firebaseUid)
-              
-              try {
-                const database = await getDatabase()
-                const referrals = database.collection('referrals')
-                
-                // Find referrer by their unique referral code (not Firebase UID slice)
-                const referrer = await users.findOne({ referralCode: userData.referralCode })
-                
-                console.log('🔍 Referrer search result:', referrer ? 'FOUND' : 'NOT FOUND')
-                
-                if (referrer) {
-                  console.log('✅ Referrer found:', referrer.email)
-                  console.log('💰 Current referrer balance:', referrer.balance || 0)
-                  
-                  // Check referrer's referral usage count (limit: 12)
-                  const referralCount = await referrals.countDocuments({ referrerId: referrer.firebaseUid })
-                  
-                  console.log('📊 Referrer current referral count:', referralCount)
-                 
-                  if (referralCount >= 12) {
-                    console.log('❌ Referral limit exceeded for referrer:', referrer.firebaseUid)
-                    // Don't create referral record, but still update user
-                    // User can still complete profile, but referrer doesn't get reward
-                  } else {
-                    console.log('🎁 Awarding referral reward to referrer')
-                    
-                    // Create referral record
-                    await referrals.insertOne({
-                      referrerId: referrer.firebaseUid,
-                      referredUserId: userData.firebaseUid,
-                      referralCode: userData.referralCode,
-                      status: 'completed', // Mark as completed since user is completing profile
-                      createdAt: new Date(),
-                      rewardAmount: 500, // 500 XAF reward
-                      rewardPaid: false
-                    })
-                    
-                    console.log('📋 Referral record created')
-                    
-                    // Update referrer's balance immediately
-                    const updateResult = await users.updateOne(
-                      { firebaseUid: referrer.firebaseUid },
-                      { 
-                        $inc: { balance: 500 },
-                        $set: { updatedAt: new Date() }
-                      }
-                    )
-                    
-                    console.log('💳 Balance update result:', updateResult)
-                    console.log('✅ Referral tracked successfully for referrer during profile completion:', referrer.firebaseUid)
-                    console.log('💰 Referrer new balance should be:', (referrer.balance || 0) + 500)
-                  }
-                } else {
-                  console.log('❌ Invalid referral code provided during profile completion:', userData.referralCode)
-                }
-              } catch (referralError) {
-                console.error('❌ Error tracking referral during profile completion:', referralError)
-              }
-            }
-            
             res.status(200).json({ message: 'User updated successfully', user })
           } else {
             // Create new user
@@ -305,8 +239,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Update existing user
           inMemoryUsers.set(userData.firebaseUid, { ...user, createdAt: existingUser.createdAt })
           console.log('User updated in in-memory storage')
-            
-            res.status(200).json({ message: 'User updated successfully (in-memory)', user })
+          res.status(200).json({ message: 'User updated successfully (in-memory)', user })
         } else {
           // Create new user
           inMemoryUsers.set(userData.firebaseUid, user)
@@ -316,168 +249,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } catch (error) {
       console.error('Error in users API:', error)
-      res.status(500).json({ error: 'Internal server error', details: error.message })
-    }
-  } else if (req.method === 'PUT') {
-    try {
-      const userData = req.body
-      
-      console.log('🔄 PUT request to /api/users with data:', userData)
-      
-      // Validate required fields
-      if (!userData.email || !userData.firebaseUid) {
-        console.log('❌ Missing required fields for PUT:', { email: !!userData.email, firebaseUid: !!userData.firebaseUid })
-        return res.status(400).json({ error: 'Missing required fields' })
-      }
-
-      const now = new Date()
-      
-      const user: Omit<User, '_id'> = {
-        email: userData.email,
-        firebaseUid: userData.firebaseUid,
-        username: userData.username || '',
-        fullName: userData.fullName,
-        dateOfBirth: new Date(userData.dateOfBirth),
-        age: userData.age,
-        gender: userData.gender,
-        nationality: userData.nationality,
-        authProvider: userData.authProvider,
-        emailVerified: userData.emailVerified || false,
-        profileCompleted: userData.profileCompleted || true,
-        createdAt: now,
-        updatedAt: now,
-        balance: userData.balance || 0
-      }
-
-      console.log('📝 Processed user object for PUT:', user)
-
-      if (isMongoDBConfigured) {
-        console.log('🗄️ MongoDB configured, updating user...')
-        try {
-          const users = await getUsersCollection()
-          const existingUser = await users.findOne({ firebaseUid: userData.firebaseUid })
-          
-          if (existingUser) {
-            // Update existing user
-            await users.updateOne(
-              { firebaseUid: userData.firebaseUid },
-              { $set: { ...user, createdAt: existingUser.createdAt } }
-            )
-            console.log('✅ User updated in MongoDB')
-            
-            // Handle referral tracking for existing users completing profile
-            if (userData.referralCode && !existingUser.profileCompleted) {
-              console.log('🎯 Processing referral for profile completion')
-              console.log('📝 Referral code provided:', userData.referralCode)
-              console.log('👤 Referred user ID:', userData.firebaseUid)
-              
-              try {
-                const database = await getDatabase()
-                const referrals = database.collection('referrals')
-                
-                // Find referrer by their unique referral code (not Firebase UID slice)
-                const referrer = await users.findOne({ referralCode: userData.referralCode })
-                
-                console.log('🔍 Referrer search result:', referrer ? 'FOUND' : 'NOT FOUND')
-                
-                if (referrer) {
-                  console.log('✅ Referrer found:', referrer.email)
-                  console.log('💰 Current referrer balance:', referrer.balance || 0)
-                  
-                  // Check referrer's referral usage count (limit: 12)
-                  const referralCount = await referrals.countDocuments({ referrerId: referrer.firebaseUid })
-                  
-                  console.log('📊 Referrer current referral count:', referralCount)
-                 
-                  if (referralCount >= 12) {
-                    console.log('❌ Referral limit exceeded for referrer:', referrer.firebaseUid)
-                  } else {
-                    console.log('🎁 Awarding referral reward to referrer')
-                    
-                    // Create referral record
-                    await referrals.insertOne({
-                      referrerId: referrer.firebaseUid,
-                      referredUserId: userData.firebaseUid,
-                      referralCode: userData.referralCode,
-                      status: 'completed',
-                      createdAt: new Date(),
-                      rewardAmount: 500,
-                      rewardPaid: false
-                    })
-                    
-                    console.log('📋 Referral record created')
-                    
-                    // Update referrer's balance immediately
-                    const updateResult = await users.updateOne(
-                      { firebaseUid: referrer.firebaseUid },
-                      { 
-                        $inc: { balance: 500 },
-                        $set: { updatedAt: new Date() }
-                      }
-                    )
-                    
-                    console.log('💳 Balance update result:', updateResult)
-                    console.log('✅ Referral tracked successfully for referrer during profile completion:', referrer.firebaseUid)
-                    console.log('💰 Referrer new balance should be:', (referrer.balance || 0) + 500)
-                  }
-                } else {
-                  console.log('❌ Invalid referral code provided during profile completion:', userData.referralCode)
-                }
-              } catch (referralError) {
-                console.error('❌ Error tracking referral during profile completion:', referralError)
-              }
-            }
-            
-            res.status(200).json({ message: 'User updated successfully', user })
-          } else {
-            console.log('❌ User not found for update')
-            res.status(404).json({ error: 'User not found' })
-          }
-        } catch (mongoError) {
-          console.error('❌ MongoDB error during PUT, falling back to in-memory:', mongoError)
-          // Fallback to in-memory storage for immediate functionality
-          try {
-            const existingUser = inMemoryUsers.get(userData.firebaseUid)
-            
-            if (existingUser) {
-              // Update existing user in memory
-              const updatedUser = { ...user, createdAt: existingUser.createdAt }
-              inMemoryUsers.set(userData.firebaseUid, updatedUser)
-              console.log('✅ User updated in in-memory fallback')
-              res.status(200).json({ message: 'User updated successfully (in-memory fallback)', user: updatedUser })
-            } else {
-              // Create new user in memory
-              inMemoryUsers.set(userData.firebaseUid, user)
-              console.log('✅ User created in in-memory fallback')
-              res.status(201).json({ message: 'User created successfully (in-memory fallback)', user })
-            }
-          } catch (memoryError) {
-            console.error('❌ In-memory fallback also failed:', memoryError)
-            res.status(500).json({ error: 'Internal server error', details: mongoError.message })
-          }
-        }
-      } else {
-        console.log('🗄️ Using in-memory storage for PUT...')
-        try {
-          const existingUser = inMemoryUsers.get(userData.firebaseUid)
-          
-          if (existingUser) {
-            // Update existing user
-            inMemoryUsers.set(userData.firebaseUid, { ...user, createdAt: existingUser.createdAt })
-            console.log('✅ User updated in in-memory storage')
-            
-            res.status(200).json({ message: 'User updated successfully (in-memory)', user })
-          } else {
-            console.log('❌ User not found for update (in-memory)')
-            res.status(404).json({ error: 'User not found' })
-          }
-        } catch (memoryError) {
-          console.error('❌ In-memory error during PUT:', memoryError)
-          res.status(500).json({ error: 'Internal server error', details: memoryError.message })
-        }
-      }
-    } catch (error) {
-      console.error('❌ PUT request error:', error)
       res.status(500).json({ error: 'Internal server error', details: error.message })
     }
   } else if (req.method === 'GET') {
@@ -608,7 +379,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Internal server error', details: error.message })
     }
   } else {
-    res.setHeader('Allow', ['GET', 'POST', 'PUT'])
+    res.setHeader('Allow', ['GET', 'POST'])
     res.status(405).end(`Method ${req.method} Not Allowed`)
   }
 }

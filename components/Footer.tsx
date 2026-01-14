@@ -10,6 +10,7 @@ export default function Footer() {
       { name: 'Security', href: '/security' }
     ],
     Company: [
+      { name: 'About', href: '/about' },
       { name: 'Blog', href: '/blog' },
       { name: 'Careers', href: '/careers' },
       { name: 'Press', href: '/press' }

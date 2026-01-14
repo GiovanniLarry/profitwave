@@ -7,16 +7,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'GET') {
     try {
       // Forward the request to the contact API
-      const contactApiUrl = `${process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_URL || 'https://profitwave.vercel.app'}/api/contact`
+      const contactApiUrl = `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/api/contact`
       const response = await fetch(contactApiUrl + '?' + new URLSearchParams(req.query as any))
       
-      const rawBody = await response.text()
-      let data: any = null
-      try {
-        data = rawBody ? JSON.parse(rawBody) : null
-      } catch {
-        data = { error: 'Invalid response from contact API' }
-      }
+      const data = await response.json()
       
       res.status(response.status).json(data)
     } catch (error) {

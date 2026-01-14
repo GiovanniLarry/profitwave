@@ -1,42 +1,30 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { MongoClient, Db, ObjectId } from 'mongodb'
 import { getAuth } from 'firebase/auth'
-import { auth } from '../../../lib/firebase'
+import { initializeApp, getApps } from 'firebase/app'
 import admin from 'firebase-admin'
-
-// Firebase configuration is handled in lib/firebase.ts
 
 // Check if MongoDB URI is configured and not using placeholder
 const isMongoDBConfigured = process.env.MONGODB_URI && !process.env.MONGODB_URI.includes('username:password')
 
-if (!process.env.MONGODB_URI) {
-  throw new Error('Please add your MongoDB URI to .env.local')
+// Only throw error if we're in production and don't have MongoDB
+if (process.env.NODE_ENV === 'production' && !isMongoDBConfigured) {
+  throw new Error('MongoDB URI is required in production')
 }
 
-const mongoUri = process.env.MONGODB_URI
-const mongoOptions = {}
-
-let client: MongoClient
-let clientPromise: Promise<MongoClient>
-
-if (process.env.NODE_ENV === 'development') {
-  let globalWithMongo = global as typeof global & {
-    _mongoClientPromise?: Promise<MongoClient>
-  }
-
-  if (!globalWithMongo._mongoClientPromise) {
-    client = new MongoClient(mongoUri, mongoOptions)
-    globalWithMongo._mongoClientPromise = client.connect()
-  }
-  clientPromise = globalWithMongo._mongoClientPromise
-} else {
-  client = new MongoClient(mongoUri, mongoOptions)
-  clientPromise = client.connect()
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 }
 
-async function getDatabase(): Promise<Db> {
-  const client = await clientPromise
-  return client.db('profitwave')
+if (!getApps().length) {
+  initializeApp(firebaseConfig)
 }
 
 // Initialize Firebase Admin SDK
@@ -57,6 +45,30 @@ if (!admin.apps.length) {
     }
   } catch (error) {
     console.error('Firebase Admin SDK initialization error:', error)
+  }
+}
+
+const uri = process.env.MONGODB_URI
+const options = {}
+
+let client: MongoClient
+let clientPromise: Promise<MongoClient>
+
+// Only initialize MongoDB if it's configured
+if (isMongoDBConfigured) {
+  if (process.env.NODE_ENV === 'development') {
+    let globalWithMongo = global as typeof global & {
+      _mongoClientPromise?: Promise<MongoClient>
+    }
+
+    if (!globalWithMongo._mongoClientPromise) {
+      client = new MongoClient(uri!, options)
+      globalWithMongo._mongoClientPromise = client.connect()
+    }
+    clientPromise = globalWithMongo._mongoClientPromise
+  } else {
+    client = new MongoClient(uri!, options)
+    clientPromise = client.connect()
   }
 }
 
@@ -89,6 +101,14 @@ interface Investment {
   endDate: Date
   currentReturn: number
   createdAt: Date
+}
+
+async function getDatabase(): Promise<Db> {
+  if (!clientPromise) {
+    throw new Error('MongoDB is not configured')
+  }
+  const client = await clientPromise
+  return client.db('profitwave')
 }
 
 async function getUsersCollection() {

@@ -1,19 +1,19 @@
-import { initializeApp, getApps } from 'firebase/app'
+import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, createUserWithEmailAndPassword, updateProfile, User, sendEmailVerification, signInWithPhoneNumber, RecaptchaVerifier, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth'
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCxpsVfOIrnpYCd1Yy7TPcxEyAqGNkaOTU",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "profitwave-7fea2.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "profitwave-7fea2",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "profitwave-7fea2.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "441212212054",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:441212212054:web:c610afd2092eee482e7cf7",
-  measurementId: process.env.NEXT_PUBLIC_MEASUREMENT_ID || "G-236XQWBZSJ"
+  apiKey: "AIzaSyCxpsVfOIrnpYCd1Yy7TPcxEyAqGNkaOTU",
+  authDomain: "profitwave-7fea2.firebaseapp.com",
+  projectId: "profitwave-7fea2",
+  storageBucket: "profitwave-7fea2.firebasestorage.app",
+  messagingSenderId: "441212212054",
+  appId: "1:441212212054:web:c610afd2092eee482e7cf7",
+  measurementId: "G-236XQWBZSJ"
 }
 
-// Initialize Firebase only if no app exists
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0]
+// Initialize Firebase
+const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
 const googleProvider = new GoogleAuthProvider()
 const facebookProvider = new FacebookAuthProvider()

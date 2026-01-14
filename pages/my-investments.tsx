@@ -3,35 +3,23 @@ import { motion } from 'framer-motion'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faWallet, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 import Link from 'next/link'
+import { getAuth } from 'firebase/auth'
+import { initializeApp, getApps } from 'firebase/app'
 import { Home, TrendingUp, User, ArrowLeft as ArrowLeftIcon, Check, AlertCircle, Clock, Target, DollarSign } from 'lucide-react'
-import { auth } from '../lib/firebase'
-import styles from '../components/Investments.module.css'
 
-// Firebase configuration is handled in lib/firebase.ts
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
 
-// Helper function to generate progress bar classes
-const getProgressBarClass = (progress: number) => {
-  // Map progress to Tailwind width classes
-  if (progress <= 5) return 'w-[5%]'
-  if (progress <= 10) return 'w-[10%]'
-  if (progress <= 15) return 'w-[15%]'
-  if (progress <= 20) return 'w-[20%]'
-  if (progress <= 25) return 'w-[25%]'
-  if (progress <= 30) return 'w-[30%]'
-  if (progress <= 35) return 'w-[35%]'
-  if (progress <= 40) return 'w-[40%]'
-  if (progress <= 45) return 'w-[45%]'
-  if (progress <= 50) return 'w-[50%]'
-  if (progress <= 55) return 'w-[55%]'
-  if (progress <= 60) return 'w-[60%]'
-  if (progress <= 65) return 'w-[65%]'
-  if (progress <= 70) return 'w-[70%]'
-  if (progress <= 75) return 'w-[75%]'
-  if (progress <= 80) return 'w-[80%]'
-  if (progress <= 85) return 'w-[85%]'
-  if (progress <= 90) return 'w-[90%]'
-  if (progress <= 95) return 'w-[95%]'
-  return 'w-full'
+if (!getApps().length) {
+  initializeApp(firebaseConfig)
 }
 
 interface Investment {
@@ -74,6 +62,7 @@ const MyInvestmentsPage = () => {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    const auth = getAuth()
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       if (currentUser) {
         setUser(currentUser)
@@ -301,7 +290,8 @@ const MyInvestmentsPage = () => {
                       </div>
                       <div className="w-full bg-white/10 rounded-full h-2">
                         <div
-                          className={`bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full transition-all duration-300 ${styles.progressBar} ${getProgressBarClass(investment.progress)}`}
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${investment.progress}%` }}
                         />
                       </div>
                     </div>

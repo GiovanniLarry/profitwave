@@ -3,10 +3,24 @@ import { motion } from 'framer-motion'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowLeft, faUpload, faCheck, faMobileAlt, faImage, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons'
 import Link from 'next/link'
+import { getAuth } from 'firebase/auth'
+import { initializeApp, getApps } from 'firebase/app'
 import { useRouter } from 'next/router'
-import { auth } from '../lib/firebase'
 
-// Firebase configuration is handled in lib/firebase.ts
+// Firebase initialization
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
+
+if (!getApps().length) {
+  initializeApp(firebaseConfig)
+}
 
 interface DepositData {
   amount: number
@@ -30,24 +44,24 @@ export default function DepositConfirmation() {
     'orange-money': {
       name: 'Orange Money',
       merchantName: 'MONIQUE NADEGE MECK',
-      merchantNumber: '+237 655621356',
+      merchantNumber: '655621356',
       instructions: [
         'Go to your Orange Money app',
         'Select "Send Money"',
-        'Enter merchant number: +237 655621356',
+        'Enter merchant number: 655621356',
         'Enter the amount',
         'Confirm transaction with your PIN',
         'Take a screenshot showing the payment ID (this is the transaction ID you receive in the confirmation message)'
       ]
     },
     'mtn-mobile-money': {
-      name: 'DELPHINE NONINDONG',
-      merchantName: 'ProfitWave Cameroon',
-      merchantNumber: '+237 674281152',
+      name: 'MTN Mobile Money',
+      merchantName: 'DELPHINE NONINDONG',
+      merchantNumber: '674281162',
       instructions: [
         'Go to your MTN Mobile Money app',
         'Select "Send Money"',
-        'Enter merchant number: +237 674281152',
+        'Enter merchant number: 674281162',
         'Enter the amount',
         'Confirm transaction with your PIN',
         'Take a screenshot showing the payment ID (this is the transaction ID you receive in the confirmation message)'
@@ -56,97 +70,53 @@ export default function DepositConfirmation() {
   }
 
   useEffect(() => {
-    const checkAuth = async () => {
-      // First check Firebase auth
-      const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+    const checkAuth = () => {
+      const auth = getAuth()
+      const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
         if (firebaseUser) {
           setUser(firebaseUser)
         } else {
-          // Fallback 1: Check localStorage session
-          const localSession = localStorage.getItem('userSession')
-          if (localSession) {
-            try {
-              const sessionData = JSON.parse(localSession)
-              // Check if session is not too old (24 hours)
-              if (Date.now() - sessionData.timestamp < 24 * 60 * 60 * 1000) {
-                setUser({ email: sessionData.user.email, uid: sessionData.user.firebaseUid })
-                return
-              } else {
-                // Session expired, remove it
-                localStorage.removeItem('userSession')
-              }
-            } catch (error) {
-              console.error('Invalid session data:', error)
-              localStorage.removeItem('userSession')
-            }
-          }
-          
-          // Fallback 2: Check if user has MongoDB session
-          try {
-            const response = await fetch('/api/auth/check-session')
-            if (response.ok) {
-              const data = await response.json()
-              if (data.authenticated) {
-                // User is authenticated via MongoDB, allow access
-                setUser({ email: data.user.email, uid: data.user.firebaseUid })
-                return
-              }
-            }
-          } catch (error) {
-            console.error('Session check failed:', error)
-          }
-          
-          // No authentication found, redirect to login
           router.push('/get-started')
         }
       })
-
       return unsubscribe
     }
 
-    const initializeAuth = async () => {
-      const unsubscribe = await checkAuth()
+    const unsubscribe = checkAuth()
 
-      // Get deposit data from query params or localStorage
-      const { amount, method } = router.query
-      if (amount && method) {
-        const depositAmount = parseFloat(amount as string)
-        if (depositAmount < 6500) {
+    // Get deposit data from query params or localStorage
+    const { amount, method } = router.query
+    if (amount && method) {
+      const depositAmount = parseFloat(amount as string)
+      if (depositAmount < 6500) {
+        router.push('/wallet')
+        return
+      }
+      const methodData = paymentMethods[method as keyof typeof paymentMethods]
+      const depositData = {
+        amount: depositAmount,
+        method: methodData.name,
+        merchantName: methodData.merchantName,
+        merchantNumber: methodData.merchantNumber
+      }
+      setDepositData(depositData)
+    } else {
+      // Fallback to localStorage
+      const storedDeposit = localStorage.getItem('pendingDeposit')
+      if (storedDeposit) {
+        const data = JSON.parse(storedDeposit)
+        if (data.amount < 6500) {
+          localStorage.removeItem('pendingDeposit')
           router.push('/wallet')
           return
         }
-        const methodData = paymentMethods[method as keyof typeof paymentMethods]
-        const depositData = {
-          amount: depositAmount,
-          method: methodData.name,
-          merchantName: methodData.merchantName,
-          merchantNumber: methodData.merchantNumber
-        }
-        setDepositData(depositData)
+        setDepositData(data)
       } else {
-        // Fallback to localStorage
-        const storedDeposit = localStorage.getItem('pendingDeposit')
-        if (storedDeposit) {
-          const data = JSON.parse(storedDeposit)
-          if (data.amount < 6500) {
-            localStorage.removeItem('pendingDeposit')
-            router.push('/wallet')
-            return
-          }
-          setDepositData(data)
-        } else {
-          router.push('/wallet')
-        }
+        router.push('/wallet')
       }
-
-      return unsubscribe
     }
 
-    initializeAuth()
-
-    return () => {
-      // Cleanup if needed
-    }
+    return () => unsubscribe()
   }, [router])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,24 +153,8 @@ export default function DepositConfirmation() {
     setError('')
 
     try {
-      let token = null
-      
-      // Try to get token from Firebase auth first
-      if (auth.currentUser) {
-        token = await auth.currentUser.getIdToken()
-      } else {
-        // Fallback: create a simple token from user data for session-based auth
-        token = Buffer.from(JSON.stringify({
-          uid: user.uid,
-          email: user.email,
-          timestamp: Date.now()
-        })).toString('base64')
-      }
-
-      if (!token) {
-        setError('Authentication error. Please refresh the page and try again.')
-        return
-      }
+      const auth = getAuth()
+      const token = await auth.currentUser?.getIdToken()
 
       const formData = new FormData()
       formData.append('screenshot', screenshot)

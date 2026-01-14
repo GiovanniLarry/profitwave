@@ -3,11 +3,25 @@ import { motion } from 'framer-motion'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faWallet, faArrowDown, faArrowUp, faHistory, faCreditCard, faBank, faMobileAlt, faCheck } from '@fortawesome/free-solid-svg-icons'
 import Link from 'next/link'
-import { Home, TrendingUp, User, ArrowLeft, Check, ArrowUp, Eye, EyeOff } from 'lucide-react'
+import { getAuth } from 'firebase/auth'
+import { initializeApp, getApps } from 'firebase/app'
+import { Home, TrendingUp, User, ArrowLeft, Check, ArrowUp } from 'lucide-react'
 import CustomerChat from '../components/CustomerChat'
-import { auth } from '../lib/firebase'
 
-// Firebase configuration is handled in lib/firebase.ts
+// Firebase initialization
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
+
+if (!getApps().length) {
+  initializeApp(firebaseConfig)
+}
 
 interface Transaction {
   id: string
@@ -22,7 +36,6 @@ interface Transaction {
 export default function Wallet() {
   const [user, setUser] = useState<any>(null)
   const [balance, setBalance] = useState(0)
-  const [showBalance, setShowBalance] = useState(true)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [depositHistory, setDepositHistory] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdrawal'>('deposit')
@@ -40,6 +53,8 @@ export default function Wallet() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const auth = getAuth()
+      
       // First check Firebase auth
       const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
         if (firebaseUser) {
@@ -70,13 +85,7 @@ export default function Wallet() {
           try {
             const response = await fetch('/api/auth/check-session')
             if (response.ok) {
-              const rawBody = await response.text()
-              let data: any = null
-              try {
-                data = rawBody ? JSON.parse(rawBody) : null
-              } catch {
-                data = { authenticated: false }
-              }
+              const data = await response.json()
               if (data.authenticated) {
                 // User is authenticated via MongoDB, allow access
                 setUser({ email: data.user.email, uid: data.user.firebaseUid })
@@ -112,18 +121,13 @@ export default function Wallet() {
 
   const fetchDepositHistory = async () => {
     try {
+      const auth = getAuth()
       const user = auth.currentUser
       if (!user) return
       
       const response = await fetch(`/api/user/deposits?userId=${user.uid}`)
       if (response.ok) {
-        const rawBody = await response.text()
-        let data: any = null
-        try {
-          data = rawBody ? JSON.parse(rawBody) : null
-        } catch {
-          data = { deposits: [] }
-        }
+        const data = await response.json()
         setDepositHistory(data.deposits || [])
       }
     } catch (error) {
@@ -133,6 +137,7 @@ export default function Wallet() {
 
   const fetchUserData = async () => {
     try {
+      const auth = getAuth()
       const user = auth.currentUser
       if (!user) {
         console.log('No current user found')
@@ -143,31 +148,34 @@ export default function Wallet() {
       console.log('Current user email:', user.email)
 
       const token = await user.getIdToken()
+      console.log('Got token, fetching direct balance...')
       
-      // Fetch user balance
-      const balanceResponse = await fetch(`/api/user/balance?uid=${user.uid}`, {
+      // Use direct balance endpoint like dashboard
+      const response = await fetch('/api/user/direct-balance', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-      
-      if (balanceResponse.ok) {
-        const balanceData = await balanceResponse.json()
-        console.log('Balance response:', balanceData)
+
+      console.log('Direct balance API response status:', response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Direct balance API response data:', data)
         
-        if (balanceData.success) {
-          setBalance(balanceData.balance)
-          console.log('Balance set to:', balanceData.balance)
-          
-          if (balanceData.realtimeUpdate) {
-            console.log('Balance updated in real-time from admin deposit')
-          }
+        if (data.success) {
+          const newBalance = data.balance || 0
+          console.log('Setting user balance to:', newBalance)
+          setBalance(newBalance)
+          console.log('Direct balance set successfully:', newBalance)
         } else {
-          console.error('Balance API returned failure:', balanceData)
+          console.error('Direct balance failed:', data.error)
           setBalance(0)
         }
       } else {
-        console.error('Failed to fetch balance, status:', balanceResponse.status)
+        console.error('Failed to fetch direct balance:', response.statusText)
+        const errorText = await response.text()
+        console.error('Error response:', errorText)
         setBalance(0)
       }
       
@@ -198,12 +206,12 @@ export default function Wallet() {
         'orange-money': {
           name: 'Orange Money',
           merchantName: 'MONIQUE NADEGE MECK',
-          merchantNumber: '+237 655 621 356'
+          merchantNumber: '655621356'
         },
         'mtn-mobile-money': {
           name: 'MTN Mobile Money',
           merchantName: 'DELPHINE NONINDONG',
-          merchantNumber: '+237 674 281 152'
+          merchantNumber: '674281162'
         }
       }
       
@@ -281,20 +289,9 @@ export default function Wallet() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/80 mb-2">Account Balance</p>
-              <h2 className="text-4xl font-bold">
-                XAF {showBalance ? balance.toLocaleString() : '***,***'}
-              </h2>
+              <h2 className="text-4xl font-bold">XAF {balance.toLocaleString()}</h2>
             </div>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setShowBalance(!showBalance)}
-                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-colors"
-                title={showBalance ? "Hide balance" : "Show balance"}
-              >
-                {showBalance ? <EyeOff className="w-5 h-5 text-white" /> : <Eye className="w-5 h-5 text-white" />}
-              </button>
-              <FontAwesomeIcon icon={faWallet} className="w-12 h-12 text-white/50" />
-            </div>
+            <FontAwesomeIcon icon={faWallet} className="w-12 h-12 text-white/50" />
           </div>
         </motion.div>
       </div>
@@ -377,13 +374,13 @@ export default function Wallet() {
                       {method.id === 'orange-money' && (
                         <>
                           <p><span className="font-semibold">Contact:</span> MONIQUE NADEGE MECK</p>
-                          <p><span className="font-semibold">Phone:</span> 237655621356</p>
+                          <p><span className="font-semibold">Phone:</span> 655621356</p>
                         </>
                       )}
                       {method.id === 'mtn-mobile-money' && (
                         <>
                           <p><span className="font-semibold">Contact:</span> DELPHINE NONINDONG</p>
-                          <p><span className="font-semibold">Phone:</span> 237674281152</p>
+                          <p><span className="font-semibold">Phone:</span> 674281162</p>
                         </>
                       )}
                     </div>
@@ -633,6 +630,7 @@ export default function Wallet() {
 
                       setIsLoading(true)
                       try {
+                        const auth = getAuth()
                         const token = await auth.currentUser?.getIdToken()
                         
                         const response = await fetch('/api/withdrawal/request', {
@@ -650,18 +648,11 @@ export default function Wallet() {
                           })
                         })
 
-                        const rawBody = await response.text()
-                        let responseData: any = null
-                        try {
-                          responseData = rawBody ? JSON.parse(rawBody) : null
-                        } catch {
-                          responseData = { error: 'Invalid response' }
-                        }
-
                         if (response.ok) {
                           setWithdrawalConfirmed(true)
                         } else {
-                          alert(responseData?.error || 'Withdrawal request failed')
+                          const errorData = await response.json()
+                          alert(errorData.error || 'Withdrawal request failed')
                         }
                       } catch (error) {
                         console.error('Withdrawal error:', error)

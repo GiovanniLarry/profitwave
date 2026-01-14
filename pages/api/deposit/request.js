@@ -1,9 +1,22 @@
-const { getAuth } = require('firebase/auth')
-const { MongoClient } = require('mongodb')
-const multer = require('multer')
-const { auth } = require('../../../lib/firebase')
+import { initializeApp } from 'firebase/app'
+import { getAuth } from 'firebase/auth'
+import { MongoClient } from 'mongodb'
+import multer from 'multer'
+import path from 'path'
 
-// Firebase configuration is handled in lib/firebase.ts
+// Firebase initialization
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
+
+const app = initializeApp(firebaseConfig)
+const auth = getAuth(app)
 
 // MongoDB connection
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017'
@@ -23,15 +36,13 @@ const upload = multer({
   }
 })
 
-module.exports = {
-  config: {
-    api: {
-      bodyParser: false,
-    },
-  }
+export const config = {
+  api: {
+    bodyParser: false,
+  },
 }
 
-async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -112,5 +123,3 @@ async function handler(req, res) {
     await client.close()
   }
 }
-
-module.exports.handler = handler

@@ -1,45 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { MongoClient, ObjectId } from 'mongodb'
 
-// Check if MongoDB URI is configured and not using placeholder
-const isMongoDBConfigured = process.env.MONGODB_URI && !process.env.MONGODB_URI.includes('username:password')
-
-// Only throw error if we're in production and don't have MongoDB
-if (process.env.NODE_ENV === 'production' && !isMongoDBConfigured) {
-  throw new Error('MongoDB URI is required in production')
-}
-
+// MongoDB connection
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/profitwave'
-const options = {}
-
-let client: MongoClient
-let clientPromise: Promise<MongoClient>
-
-// Only initialize MongoDB if it's configured
-if (isMongoDBConfigured) {
-  if (process.env.NODE_ENV === 'development') {
-    let globalWithMongo = global as typeof global & {
-      _mongoClientPromise?: Promise<MongoClient>
-    }
-
-    if (!globalWithMongo._mongoClientPromise) {
-      client = new MongoClient(uri, options)
-      globalWithMongo._mongoClientPromise = client.connect()
-    }
-    clientPromise = globalWithMongo._mongoClientPromise
-  } else {
-    client = new MongoClient(uri, options)
-    clientPromise = client.connect()
-  }
-}
-
-async function getDatabase() {
-  if (!clientPromise) {
-    throw new Error('MongoDB is not configured')
-  }
-  const client = await clientPromise
-  return client.db('profitwave')
-}
+const client = new MongoClient(uri)
 
 // Function to generate unique user ID (pw001, pw002, etc.)
 const generateUniqueId = async (db: any): Promise<string> => {
@@ -84,47 +48,74 @@ const getUserUniqueId = async (db: any, userId: string): Promise<string> => {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log('=== PENDING DEPOSITS API CALLED ===')
+  console.log('Method:', req.method)
+  console.log('Timestamp:', new Date().toISOString())
+  console.log('Headers:', req.headers)
+  console.log('MongoDB URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET')
+  
   if (req.method !== 'GET' && req.method !== 'POST') {
+    console.log('ERROR: Method not allowed -', req.method)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   let dbConnection = null
 
   try {
-    // Connect to MongoDB using standardized connection
-    dbConnection = await getDatabase()
+    console.log('Attempting to connect to MongoDB...')
+    // Connect to MongoDB
+    await client.connect()
+    dbConnection = client.db()
     const depositsCollection = dbConnection.collection('deposits')
     const usersCollection = dbConnection.collection('users')
+    console.log('MongoDB connected successfully')
+    console.log('Database name:', dbConnection.databaseName)
 
     if (req.method === 'GET') {
+      console.log('Fetching pending deposits...')
+      
       // Fetch pending deposits with user information
       const pendingDeposits = await depositsCollection
         .find({ status: 'pending' })
         .sort({ createdAt: -1 })
         .toArray()
+      
+      console.log('Found', pendingDeposits.length, 'pending deposits')
+      console.log('Deposit IDs:', pendingDeposits.map(d => d._id.toString()))
 
+      console.log('Enriching deposits with user information...')
       // Enrich with user information
       const enrichedDeposits = await Promise.all(
         pendingDeposits.map(async (deposit) => {
+          console.log('Processing deposit:', deposit._id.toString(), 'for userId:', deposit.userId)
+          
           // Try multiple ways to find the user
           let user = null
           
           // Try firebaseUid first
           user = await usersCollection.findOne({ firebaseUid: deposit.userId })
+          console.log('Tried firebaseUid, found user:', !!user)
           
           // If not found, try _id
           if (!user) {
-            user = await usersCollection.findOne({ _id: new ObjectId(deposit.userId) })
+            try {
+              user = await usersCollection.findOne({ _id: new ObjectId(deposit.userId) })
+              console.log('Tried _id, found user:', !!user)
+            } catch (e) {
+              console.log('Invalid ObjectId for userId:', deposit.userId)
+            }
           }
           
           // If still not found, try uid field
           if (!user) {
             user = await usersCollection.findOne({ uid: deposit.userId })
+            console.log('Tried uid, found user:', !!user)
           }
           
           // If still not found, try email as userId
           if (!user) {
             user = await usersCollection.findOne({ email: deposit.userId })
+            console.log('Tried email, found user:', !!user)
           }
           
           // Get or generate unique ID for this user
@@ -149,6 +140,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         })
       )
 
+      console.log('Successfully enriched', enrichedDeposits.length, 'deposits')
+      console.log('=== PENDING DEPOSITS API SUCCESS ===')
+      
       res.status(200).json({
         success: true,
         pendingDeposits: enrichedDeposits
@@ -225,12 +219,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
     }
   } catch (error) {
-    console.error('Pending deposits API error:', error)
+    console.error('=== PENDING DEPOSITS API ERROR ===')
+    console.error('Error occurred at:', new Date().toISOString())
+    console.error('Full error:', error)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+    console.error('MongoDB URI available:', !!process.env.MONGODB_URI)
+    
     res.status(500).json({ 
       error: 'Internal server error',
-      details: error.message 
+      details: error.message,
+      timestamp: new Date().toISOString()
     })
   } finally {
-    // Connection pooling handled by the standardized connection pattern
+    if (dbConnection) {
+      await client.close()
+    }
   }
 }

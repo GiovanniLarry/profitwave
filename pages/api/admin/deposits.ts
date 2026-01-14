@@ -139,7 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         processedBy: 'admin'
       }
 
-      // Update user balance - add to current balance
+      // Update user balance
       const currentBalance = user.balance || 0
       const newBalance = currentBalance + parseFloat(amount)
 
@@ -172,7 +172,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const users = await getUsersCollection()
           console.log('Updating balance in MongoDB for user:', userId)
           console.log('Current balance:', currentBalance)
-          console.log('Deposit amount:', parseFloat(amount))
           console.log('New balance:', newBalance)
           
           const result = await users.updateOne(

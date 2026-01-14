@@ -4,9 +4,26 @@ import { ArrowLeft, User, Calendar, Globe, CheckCircle, AlertCircle, ArrowRight,
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { getAuth, sendEmailVerification } from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { initializeApp } from 'firebase/app'
 
-// Firebase configuration is handled in lib/firebase.ts
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
+
+// Initialize Firebase app
+let app
+try {
+  app = initializeApp(firebaseConfig)
+} catch (error) {
+  console.log('Firebase app already initialized')
+}
 
 export default function CompleteProfilePage() {
   const router = useRouter()
@@ -17,24 +34,17 @@ export default function CompleteProfilePage() {
     gender: '',
     nationality: '',
     password: '',
-    agreeTerms: false,
-    referralCode: ''
+    agreeTerms: false
   })
   const [errors, setErrors] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [calculatedAge, setCalculatedAge] = useState<number | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [verificationChecked, setVerificationChecked] = useState(false)
+  const [showVerificationPopup, setShowVerificationPopup] = useState(false)
   const [userEmail, setUserEmail] = useState('')
-  const [currentUser, setCurrentUser] = useState<any>(null)
   const [passwordStrength, setPasswordStrength] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
-  const [referralData, setReferralData] = useState({
-    referralCode: '',
-    referralLink: '',
-    totalReferrals: 0,
-    totalEarnings: 0
-  })
 
   // Calculate password strength
   const calculatePasswordStrength = (password: string) => {
@@ -55,13 +65,7 @@ export default function CompleteProfilePage() {
       console.log('Username check response status:', response.status)
       
       if (response.ok) {
-        const rawBody = await response.text()
-        let data: any = null
-        try {
-          data = rawBody ? JSON.parse(rawBody) : null
-        } catch {
-          data = { exists: false }
-        }
+        const data = await response.json()
         console.log('Username check response data:', data)
         return !data.exists
       }
@@ -78,74 +82,27 @@ export default function CompleteProfilePage() {
     const checkEmailVerification = async () => {
       try {
         const auth = getAuth()
-        const user = auth.currentUser
+        const currentUser = auth.currentUser
         
-        if (!user) {
+        if (!currentUser) {
           router.push('/signup')
           return
         }
 
-        setCurrentUser(user)
-        setUserEmail(user.email || '')
+        setUserEmail(currentUser.email || '')
 
-        // Check if email was recently verified (from verification page)
-        const emailVerified = localStorage.getItem('emailVerified')
-        const verificationTime = localStorage.getItem('verificationTime')
-        const isRecentVerification = verificationTime && (Date.now() - parseInt(verificationTime)) < 30000 // Within 30 seconds
-
-        // Fetch referral data
-        try {
-          const response = await fetch(`/api/user/referral-data?userId=${user.uid}`)
-          if (response.ok) {
-            const rawBody = await response.text()
-            let data: any = null
-            try {
-              data = rawBody ? JSON.parse(rawBody) : null
-            } catch {
-              data = {}
-            }
-            setReferralData(data)
-          }
-        } catch (error) {
-          console.error('Error fetching referral data:', error)
+        if (!currentUser.emailVerified) {
+          // Show verification popup instead of immediate redirect
+          setShowVerificationPopup(true)
+          setVerificationChecked(true)
+          return
         }
 
-        // Force refresh user data multiple times to get latest verification status
-        let attempts = 0
-        const maxAttempts = 3
-        
-        const checkVerificationStatus = async () => {
-          await user.reload()
-          
-          // Check if email is verified either from Firebase or localStorage flag
-          const isVerified = user.emailVerified || isRecentVerification
-          
-          if (isVerified) {
-            // User is verified, allow access
-            setVerificationChecked(true)
-            console.log('Email verified successfully, showing profile form')
-            // Clear verification flags
-            localStorage.removeItem('emailVerified')
-            localStorage.removeItem('verificationTime')
-          } else {
-            attempts++
-            if (attempts < maxAttempts) {
-              // Try again after 1 second
-              setTimeout(checkVerificationStatus, 1000)
-            } else {
-              // Final attempt failed, show verification message but stay on page
-              setVerificationChecked(true)
-              console.log('Email not verified, showing verification message')
-            }
-          }
-        }
-
-        // Start checking
-        checkVerificationStatus()
-        
+        // User is verified, allow access
+        setVerificationChecked(true)
       } catch (error) {
         console.error('Error checking email verification:', error)
-        setVerificationChecked(true)
+        router.push('/get-started')
       }
     }
 
@@ -231,13 +188,16 @@ export default function CompleteProfilePage() {
     setErrors([])
 
     try {
+      const auth = getAuth()
+      const currentUser = auth.currentUser
+      
       if (!currentUser) {
         throw new Error('No authenticated user found')
       }
 
       if (!currentUser.emailVerified) {
+        setShowVerificationPopup(true)
         setIsLoading(false)
-        setErrors(['Please verify your email address before completing your profile. Check your inbox for the verification email.'])
         return
       }
 
@@ -254,46 +214,22 @@ export default function CompleteProfilePage() {
         authProvider: currentUser.providerData[0]?.providerId === 'password' ? 'email' : 
                       currentUser.providerData[0]?.providerId === 'google.com' ? 'google' : 'apple',
         emailVerified: currentUser.emailVerified || false,
-        profileCompleted: true,
-        referralCode: formData.referralCode || null
+        profileCompleted: true
       }
 
-      console.log('🔄 Submitting profile with data:', userData)
-      console.log('🔗 Referral code being sent:', userData.referralCode)
-
       const response = await fetch('/api/users', {
-        method: 'PUT', // Use PUT for updating existing user
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData),
       })
 
-      console.log('📡 API response status:', response.status)
-      // Read the body ONCE safely (supports non-JSON responses too)
-      const rawBody = await response.text()
-      let responseData: any = null
-      try {
-        responseData = rawBody ? JSON.parse(rawBody) : null
-      } catch {
-        responseData = { message: rawBody }
-      }
-      console.log('📦 API response data:', responseData)
-
       if (!response.ok) {
-        console.error('❌ API Error Response:', responseData)
-
-        if (responseData?.error && String(responseData.error).includes('username')) {
-          setErrors([responseData.error])
+        const errorData = await response.json()
+        if (errorData.error && errorData.error.includes('username')) {
+          setErrors([errorData.error])
           return
         }
-
-        const errorMessage = responseData?.error || responseData?.message || 'Failed to save profile'
-        console.error('❌ Profile save error details:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: responseData,
-        })
-        setErrors([errorMessage])
-        return
+        throw new Error('Failed to save profile')
       }
 
       setShowSuccess(true)
@@ -301,42 +237,47 @@ export default function CompleteProfilePage() {
         router.push('/dashboard')
       }, 2000)
     } catch (error: any) {
-      console.error('❌ Profile submission caught error:', error)
-      console.error('❌ Error stack:', error.stack)
-      console.error('❌ Error details:', {
-        name: error.name,
-        message: error.message,
-        status: error.status,
-        statusText: error.statusText
-      })
-      
-      // Show more specific error message
-      const errorMessage = error.message || 'An error occurred while saving your profile. Please try again.'
-      setErrors([errorMessage])
+      console.error('Error saving profile:', error)
+      setErrors(['An error occurred while saving your profile. Please try again.'])
     } finally {
       setIsLoading(false)
     }
   }
 
+  const handleResendVerification = async () => {
+    try {
+      const auth = getAuth()
+      const currentUser = auth.currentUser
+      
+      if (currentUser) {
+        await sendEmailVerification(currentUser)
+        setErrors(['Verification email sent! Please check your inbox.'])
+      }
+    } catch (error) {
+      console.error('Error resending verification:', error)
+      setErrors(['Failed to resend verification email. Please try again.'])
+    }
+  }
+
   return (
-  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-    {/* Header */}
-    <div className="fixed top-0 w-full z-50 bg-black/20 backdrop-blur-lg border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center space-x-2">
-            <TrendingUp className="h-8 w-8 text-purple-400" />
-            <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              ProfitWave
-            </span>
-          </Link>
-          <Link href="/signup" className="text-gray-400 hover:text-white transition-colors">
-            <ArrowLeft className="w-5 h-5 mr-2 inline" />
-            Back to Sign Up
-          </Link>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Header */}
+      <div className="fixed top-0 w-full z-50 bg-black/20 backdrop-blur-lg border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/" className="flex items-center space-x-2">
+              <TrendingUp className="h-8 w-8 text-purple-400" />
+              <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                ProfitWave
+              </span>
+            </Link>
+            <Link href="/signup" className="text-gray-400 hover:text-white transition-colors">
+              <ArrowLeft className="w-5 h-5 mr-2 inline" />
+              Back to Sign Up
+            </Link>
+          </div>
         </div>
       </div>
-    </div>
       
       <section className="pt-32 pb-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md mx-auto">
@@ -350,35 +291,6 @@ export default function CompleteProfilePage() {
               <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <h2 className="text-xl font-semibold text-white mb-2">Verifying Your Email</h2>
               <p className="text-gray-300">Please wait while we check your email verification status...</p>
-            </motion.div>
-          ) : !currentUser?.emailVerified ? (
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="text-center"
-            >
-              <div className="w-20 h-20 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-yellow-500/30">
-                <Mail className="w-10 h-10 text-yellow-400" />
-              </div>
-              
-              <h3 className="text-2xl font-bold text-white mb-3">Verify Your Email</h3>
-              <p className="text-gray-300 mb-4">
-                Please check your inbox and click the verification link to complete your profile.
-              </p>
-              
-              <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-4 mb-6">
-                <div className="flex items-start space-x-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
-                  <div className="text-left">
-                    <p className="text-yellow-300 text-sm font-medium mb-1">Email Verification Required</p>
-                    <p className="text-yellow-200/80 text-xs">
-                      We've sent a verification link to <span className="font-medium">{userEmail}</span>. 
-                      Please check your inbox and click the link to verify your account.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </motion.div>
           ) : (
             <>
@@ -569,19 +481,6 @@ export default function CompleteProfilePage() {
                       )}
                     </div>
 
-                    {/* Referral Code */}
-                    <div>
-                      <label className="block text-gray-300 mb-1 text-sm">Referral Code (Optional)</label>
-                      <input
-                        type="text"
-                        name="referralCode"
-                        value={formData.referralCode}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none transition-colors text-sm"
-                        placeholder="Enter referral code (optional)"
-                      />
-                    </div>
-
                     <div className="flex items-start">
                       <input
                         type="checkbox"
@@ -640,6 +539,69 @@ export default function CompleteProfilePage() {
           )}
         </div>
       </section>
+
+      {/* Email Verification Popup */}
+      {showVerificationPopup && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-3xl shadow-2xl text-center max-w-md mx-4 border border-white/10"
+          >
+            <div className="w-20 h-20 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-purple-500/30">
+              <Mail className="w-10 h-10 text-purple-400" />
+            </div>
+            
+            <h3 className="text-2xl font-bold text-white mb-3">Verify Your Account</h3>
+            
+            <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-4 mb-6">
+              <div className="flex items-start space-x-3">
+                <Shield className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                <div className="text-left">
+                  <p className="text-yellow-300 text-sm font-medium mb-1">Email Verification Required</p>
+                  <p className="text-yellow-200/80 text-xs">
+                    We've sent a verification link to <span className="font-medium">{userEmail}</span>. 
+                    Please check your inbox and click the link to verify your account before completing your profile.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <button
+                onClick={handleResendVerification}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-full font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-200 flex items-center justify-center group"
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Resend Verification Email
+              </button>
+              
+              <button
+                onClick={() => router.push('/get-started')}
+                className="w-full bg-white/10 text-white px-6 py-3 rounded-full font-semibold hover:bg-white/20 transition-all duration-200 border border-white/20"
+              >
+                Back to Login
+              </button>
+            </div>
+
+            <div className="text-center">
+              <p className="text-gray-400 text-xs mb-2">Didn't receive the email?</p>
+              <ul className="text-gray-500 text-xs space-y-1">
+                <li>• Check your spam or junk folder</li>
+                <li>• Make sure the email address is correct</li>
+                <li>• Wait a few minutes for delivery</li>
+              </ul>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Success Popup */}
       {showSuccess && (

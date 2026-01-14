@@ -4,11 +4,24 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faUser, faEnvelope, faPhone, faCalendar, faFlag, faTrash, faHeadset, faEdit, faArrowLeft, faChartLine } from '@fortawesome/free-solid-svg-icons'
 import Link from 'next/link'
 import { getAuth } from 'firebase/auth'
+import { initializeApp, getApps } from 'firebase/app'
 import { Home, TrendingUp, User, Mail, MessageSquare, Phone } from 'lucide-react'
 import CustomerChat from '../components/CustomerChat'
-import { auth } from '../lib/firebase'
 
-// Firebase configuration is handled in lib/firebase.ts
+// Firebase initialization
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
+
+if (!getApps().length) {
+  initializeApp(firebaseConfig)
+}
 
 interface UserProfile {
   name: string
@@ -25,9 +38,11 @@ export default function Account() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [contactForm, setContactForm] = useState({
+    subject: '',
+    message: ''
+  })
   const [isLoading, setIsLoading] = useState(false)
-  const [contactForm, setContactForm] = useState({ subject: '', message: '' })
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -108,70 +123,62 @@ export default function Account() {
 
   const fetchUserProfile = async () => {
     try {
-      console.log('🔄 Starting fetchUserProfile...')
       const auth = getAuth()
       const user = auth.currentUser
       if (!user) {
-        console.log('❌ No current user found')
+        console.log('No current user found')
         return
       }
 
-      console.log('✅ Current user UID:', user.uid)
-      console.log('✅ Current user email:', user.email)
+      console.log('Current user UID:', user.uid)
+      console.log('Current user email:', user.email)
 
       const token = await user.getIdToken()
-      console.log('✅ Got token, fetching profile...')
+      console.log('Got token, fetching direct balance...')
       
-      // Use standardized balance endpoint
-      const balanceResponse = await fetch(`/api/user/balance?uid=${user.uid}`, {
+      // Use direct balance endpoint like dashboard
+      const balanceResponse = await fetch('/api/user/direct-balance', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
 
-      console.log('📊 Direct balance API response status:', balanceResponse.status)
+      console.log('Direct balance API response status:', balanceResponse.status)
 
       let userBalance = 0
       if (balanceResponse.ok) {
         const balanceData = await balanceResponse.json()
-        console.log('💰 Direct balance API response data:', balanceData)
+        console.log('Direct balance API response data:', balanceData)
         
         if (balanceData.success) {
           userBalance = balanceData.balance || 0
-          console.log('💰 Setting user balance to:', userBalance)
+          console.log('Setting user balance to:', userBalance)
         } else {
-          console.error('❌ Direct balance failed:', balanceData.error)
+          console.error('Direct balance failed:', balanceData.error)
         }
       } else {
-        console.error('❌ Failed to fetch direct balance:', balanceResponse.statusText)
+        console.error('Failed to fetch direct balance:', balanceResponse.statusText)
       }
       
       // Still need profile data for other user information
-      console.log('👤 Fetching profile data...')
       const profileResponse = await fetch('/api/user/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
       
-      console.log('👤 Profile API response status:', profileResponse.status)
-      
       if (profileResponse.ok) {
         const profileData = await profileResponse.json()
-        console.log('✅ Account API response data:', profileData)
+        console.log('Account API response data:', profileData)
         // Update profile with direct balance
         setProfile({
           ...profileData,
           balance: userBalance
         })
-        console.log('✅ Profile state updated successfully')
       } else {
-        console.error('❌ Failed to fetch profile:', profileResponse.statusText)
-        const errorText = await profileResponse.text()
-        console.error('❌ Profile error response:', errorText)
-        
+        console.error('Failed to fetch profile:', profileResponse.statusText)
         // Create minimal profile with direct balance
-        const minimalProfile = {
+        setProfile({
           name: user.displayName || user.email?.split('@')[0] || 'User',
           email: user.email || 'user@example.com',
           age: 25,
@@ -179,15 +186,13 @@ export default function Account() {
           nationality: 'Cameroon',
           balance: userBalance,
           createdAt: new Date().toISOString()
-        }
-        setProfile(minimalProfile)
-        console.log('✅ Created minimal profile:', minimalProfile)
+        })
       }
     } catch (error) {
-      console.error('❌ Error fetching user profile:', error)
+      console.error('Error fetching user profile:', error)
       // Set default profile with 0 balance
       const auth = getAuth()
-      const defaultProfile = {
+      setProfile({
         name: auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || 'User',
         email: auth.currentUser?.email || 'user@example.com',
         age: 25,
@@ -195,9 +200,7 @@ export default function Account() {
         nationality: 'Cameroon',
         balance: 0,
         createdAt: new Date().toISOString()
-      }
-      setProfile(defaultProfile)
-      console.log('✅ Set default profile:', defaultProfile)
+      })
     }
   }
 
@@ -336,7 +339,7 @@ export default function Account() {
     }
   }
 
-  if (!user) {
+  if (!user || !profile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
         <div className="text-white text-2xl">Loading...</div>
@@ -344,48 +347,9 @@ export default function Account() {
     )
   }
 
-  // Debug: Log current profile state
-  console.log('🔍 Current profile state:', profile)
-  console.log('🔍 Current user state:', user)
-
-  // Set a test profile immediately to bypass loading issues
-  if (!profile && user) {
-    console.log('🚨 No profile found, setting test profile immediately')
-    const testProfile = {
-      name: user.displayName || user.email?.split('@')[0] || 'Test User',
-      email: user.email || 'test@example.com',
-      age: 25,
-      gender: 'male',
-      nationality: 'Cameroon',
-      balance: 10000,
-      createdAt: new Date().toISOString()
-    }
-    setProfile(testProfile)
-    console.log('✅ Test profile set:', testProfile)
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4 pb-20">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center space-x-4">
-          <Link href="/dashboard" className="text-white/60 hover:text-white transition-colors">
-            <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5 mr-2" />
-            Back to Dashboard
-          </Link>
-        </div>
-        
-        {/* Debug button to force profile refresh */}
-        <button
-          onClick={() => {
-            console.log('🔄 Manual profile refresh triggered')
-            fetchUserProfile()
-          }}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
-        >
-          Refresh Profile
-        </button>
-      </div>
       <div className="max-w-6xl mx-auto mb-8">
         <div className="flex items-center justify-between mb-6">
           <Link href="/dashboard">
@@ -421,7 +385,7 @@ export default function Account() {
                 <FontAwesomeIcon icon={faUser} className="w-5 h-5 text-white/60" />
                 <div>
                   <p className="text-sm text-white/60">Full Name</p>
-                  <p className="font-semibold">{profile?.name || 'Loading...'}</p>
+                  <p className="font-semibold">{profile.name}</p>
                 </div>
               </div>
 
@@ -429,7 +393,7 @@ export default function Account() {
                 <FontAwesomeIcon icon={faEnvelope} className="w-5 h-5 text-white/60" />
                 <div>
                   <p className="text-sm text-white/60">Email</p>
-                  <p className="font-semibold">{profile?.email || user?.email || 'Loading...'}</p>
+                  <p className="font-semibold">{profile.email}</p>
                 </div>
               </div>
 
@@ -437,7 +401,7 @@ export default function Account() {
                 <FontAwesomeIcon icon={faCalendar} className="w-5 h-5 text-white/60" />
                 <div>
                   <p className="text-sm text-white/60">Age</p>
-                  <p className="font-semibold">{profile?.age || 'Loading...'} years</p>
+                  <p className="font-semibold">{profile.age} years</p>
                 </div>
               </div>
             </div>
@@ -447,7 +411,7 @@ export default function Account() {
                 <FontAwesomeIcon icon={faPhone} className="w-5 h-5 text-white/60" />
                 <div>
                   <p className="text-sm text-white/60">Gender</p>
-                  <p className="font-semibold capitalize">{profile?.gender || 'Loading...'}</p>
+                  <p className="font-semibold capitalize">{profile.gender}</p>
                 </div>
               </div>
 
@@ -455,7 +419,7 @@ export default function Account() {
                 <FontAwesomeIcon icon={faFlag} className="w-5 h-5 text-white/60" />
                 <div>
                   <p className="text-sm text-white/60">Nationality</p>
-                  <p className="font-semibold">{profile?.nationality || 'Loading...'}</p>
+                  <p className="font-semibold">{profile.nationality}</p>
                 </div>
               </div>
 
@@ -463,20 +427,37 @@ export default function Account() {
                 <FontAwesomeIcon icon={faEnvelope} className="w-5 h-5 text-white/60" />
                 <div>
                   <p className="text-sm text-white/60">Member Since</p>
-                  <p className="font-semibold">{profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Loading...'}</p>
+                  <p className="font-semibold">{new Date(profile.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>
           </div>
         </motion.div>
 
-        
+        {/* Account Balance */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl p-6 mb-8"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold mb-2">Account Balance</h3>
+              <p className="text-3xl font-bold">XAF {profile.balance.toLocaleString()}</p>
+            </div>
+            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+              <FontAwesomeIcon icon={faUser} className="w-8 h-8 text-white/70" />
+            </div>
+          </div>
+        </motion.div>
+
         {/* Action Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-1 md:grid-cols-3 gap-4"
         >
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -522,6 +503,7 @@ export default function Account() {
             <p className="text-white/60 text-sm">Permanently delete your account and data</p>
           </motion.button>
         </motion.div>
+      </div>
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
@@ -664,6 +646,5 @@ export default function Account() {
       {/* Customer Chat Component */}
       <CustomerChat />
     </div>
-  </div>
   )
 }

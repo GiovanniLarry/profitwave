@@ -1,50 +1,27 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { MongoClient, ObjectId } from 'mongodb'
 import multer from 'multer'
+import { initializeApp, getApps } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { auth } from '../../../lib/firebase'
 
-// Firebase configuration is handled in lib/firebase.ts
-
-// Check if MongoDB URI is configured and not using placeholder
-const isMongoDBConfigured = process.env.MONGODB_URI && !process.env.MONGODB_URI.includes('username:password')
-
-// Only throw error if we're in production and don't have MongoDB
-if (process.env.NODE_ENV === 'production' && !isMongoDBConfigured) {
-  throw new Error('MongoDB URI is required in production')
+// Firebase client initialization (same as frontend)
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 }
 
+if (!getApps().length) {
+  initializeApp(firebaseConfig)
+}
+
+// MongoDB connection
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/profitwave'
-const options = {}
-
-let client: MongoClient
-let clientPromise: Promise<MongoClient>
-
-// Only initialize MongoDB if it's configured
-if (isMongoDBConfigured) {
-  if (process.env.NODE_ENV === 'development') {
-    let globalWithMongo = global as typeof global & {
-      _mongoClientPromise?: Promise<MongoClient>
-    }
-
-    if (!globalWithMongo._mongoClientPromise) {
-      client = new MongoClient(uri, options)
-      globalWithMongo._mongoClientPromise = client.connect()
-    }
-    clientPromise = globalWithMongo._mongoClientPromise
-  } else {
-    client = new MongoClient(uri, options)
-    clientPromise = client.connect()
-  }
-}
-
-async function getDatabase() {
-  if (!clientPromise) {
-    throw new Error('MongoDB is not configured')
-  }
-  const client = await clientPromise
-  return client.db('profitwave')
-}
+const client = new MongoClient(uri)
 
 // Configure multer for file uploads
 const upload = multer({
@@ -81,22 +58,12 @@ const verifyToken = async (token: string): Promise<string | null> => {
       if (parts.length === 3) {
         try {
           const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString())
-          return payload.sub || payload.user_id || payload.uid || 'development-user-id'
+          return payload.sub || payload.user_id || 'development-user-id'
         } catch (e) {
-          console.log('Failed to parse JWT token, trying fallback format')
+          console.log('Failed to parse token, using development ID')
+          return 'development-user-id'
         }
       }
-      
-      // Fallback: try to parse as base64 encoded JSON (for session-based tokens)
-      try {
-        const payload = JSON.parse(Buffer.from(token, 'base64').toString())
-        if (payload.uid) {
-          return payload.uid
-        }
-      } catch (e) {
-        console.log('Failed to parse fallback token format')
-      }
-      
       return 'development-user-id'
     }
     return null
@@ -107,7 +74,14 @@ const verifyToken = async (token: string): Promise<string | null> => {
 }
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log('=== DEPOSIT CONFIRMATION API CALLED ===')
+  console.log('Method:', req.method)
+  console.log('Timestamp:', new Date().toISOString())
+  console.log('Headers:', req.headers)
+  console.log('MongoDB URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET')
+  
   if (req.method !== 'POST') {
+    console.log('ERROR: Method not allowed -', req.method)
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
@@ -155,13 +129,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    // Connect to MongoDB using standardized connection
+    // Connect to MongoDB
     console.log('Connecting to MongoDB...')
-    dbConnection = await getDatabase()
+    await client.connect()
+    dbConnection = client.db()
     const depositsCollection = dbConnection.collection('deposits')
     const usersCollection = dbConnection.collection('users')
 
     console.log('Connected to MongoDB successfully')
+    console.log('Database name:', dbConnection.databaseName)
 
     // Create deposit record
     const deposit = {
@@ -185,6 +161,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Save deposit to database
     const result = await depositsCollection.insertOne(deposit)
     console.log('Deposit saved with ID:', result.insertedId)
+    console.log('Deposit details saved to database successfully')
 
     // Check if user exists first
     const user = await usersCollection.findOne({ firebaseUid: userId })
@@ -254,6 +231,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })
 
     console.log('Admin notification created')
+    console.log('=== DEPOSIT CONFIRMATION API SUCCESS ===')
+    console.log('Deposit processed successfully for user:', userId)
 
     res.status(200).json({
       success: true,
@@ -264,8 +243,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     console.log('Deposit confirmation completed successfully')
 
   } catch (error) {
-    console.error('Deposit confirmation error:', error)
+    console.error('=== DEPOSIT CONFIRMATION API ERROR ===')
+    console.error('Error occurred at:', new Date().toISOString())
+    console.error('Full error:', error)
+    console.error('Error message:', error.message)
     console.error('Error stack:', error.stack)
+    console.error('MongoDB URI available:', !!process.env.MONGODB_URI)
     
     // More detailed error response
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
@@ -275,9 +258,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       timestamp: new Date().toISOString()
     }
     
+    console.error('Error response being sent:', errorDetails)
     res.status(500).json(errorDetails)
   } finally {
-    // Connection pooling handled by the standardized connection pattern
+    if (dbConnection) {
+      try {
+        await client.close()
+        console.log('MongoDB connection closed')
+      } catch (closeError) {
+        console.error('Error closing MongoDB connection:', closeError)
+      }
+    }
   }
 }
 

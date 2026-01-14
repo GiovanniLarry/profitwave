@@ -1,9 +1,25 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { MongoClient, Db } from 'mongodb'
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '../../../lib/firebase'
+import { initializeApp } from 'firebase/app'
 
-// Firebase configuration is handled in lib/firebase.ts
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
+
+let app
+try {
+  app = initializeApp(firebaseConfig)
+} catch (error) {
+  console.log('Firebase app already initialized')
+}
 
 // MongoDB connection setup
 const isMongoDBConfigured = process.env.MONGODB_URI && !process.env.MONGODB_URI.includes('username:password')
@@ -79,9 +95,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Step 2: Allow username/password login for users who have completed profile
     // This enables users who signed up with Google/Facebook to also use username/password
-    if ((user.profileCompleted && user.username && user.password) || 
-        (user.authProvider !== 'email' && user.username && user.password)) {
-      console.log('User has completed profile or is OAuth user with username/password, allowing username/password login')
+    if (user.profileCompleted && user.username && user.password) {
+      console.log('User has completed profile, allowing username/password login')
       
       // Verify password
       if (user.password !== password) {
@@ -221,7 +236,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } else {
       // For Google/Facebook auth users without completed profile, redirect to OAuth flow
       return res.status(400).json({ 
-        error: 'Please continue with Google sign-in to access your account.',
+        error: 'Please complete your profile first to enable username/password login, or use Google/Facebook sign-in.',
         authProvider: user.authProvider,
         needsProfileCompletion: true
       })

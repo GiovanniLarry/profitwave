@@ -65,7 +65,7 @@ interface Notification {
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'messages' | 'chat' | 'analytics' | 'settings' | 'deposit' | 'deposit-verification' | 'withdrawals' | 'investment-news'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'messages' | 'chat' | 'analytics' | 'settings' | 'deposit' | 'deposit-verification' | 'withdrawals'>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [stats, setStats] = useState<AdminStats>({
@@ -79,20 +79,8 @@ export default function AdminDashboard() {
   })
   const [users, setUsers] = useState<User[]>([])
   const [messages, setMessages] = useState<ContactMessage[]>([])
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
+  const [notifications, setNotifications] = useState<any[]>([])
   const [notificationCount, setNotificationCount] = useState(0)
-  
-  // Investment News State
-  const [investmentNews, setInvestmentNews] = useState<any[]>([])
-  const [newsForm, setNewsForm] = useState({
-    title: '',
-    content: '',
-    category: 'general',
-    importance: 'normal'
-  })
-  const [editingNews, setEditingNews] = useState<any>(null)
-  const [showNewsForm, setShowNewsForm] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null)
@@ -141,11 +129,6 @@ export default function AdminDashboard() {
     // Fetch chat users if chat tab is active
     if (activeTab === 'chat') {
       fetchChatUsers()
-    }
-    
-    // Fetch investment news if investment-news tab is active
-    if (activeTab === 'investment-news') {
-      fetchInvestmentNews()
     }
     
     // Set up real-time updates every 30 seconds
@@ -317,115 +300,6 @@ export default function AdminDashboard() {
     }
   }
 
-  // Investment News Functions
-  const fetchInvestmentNews = async () => {
-    try {
-      const response = await fetch('/api/admin/investment-news', {
-        headers: {
-          'Authorization': 'Bearer admin-token-2024'
-        }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setInvestmentNews(data.news || [])
-      }
-    } catch (error) {
-      console.error('Error fetching investment news:', error)
-    }
-  }
-
-  const handleCreateNews = async () => {
-    try {
-      const response = await fetch('/api/admin/investment-news', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer admin-token-2024'
-        },
-        body: JSON.stringify(newsForm)
-      })
-      
-      if (response.ok) {
-        alert('Investment news created successfully!')
-        setNewsForm({ title: '', content: '', category: 'general', importance: 'normal' })
-        setShowNewsForm(false)
-        fetchInvestmentNews()
-      } else {
-        const errorData = await response.json()
-        alert(`Failed to create news: ${errorData.error}`)
-      }
-    } catch (error) {
-      console.error('Error creating news:', error)
-      alert('Failed to create news')
-    }
-  }
-
-  const handleUpdateNews = async () => {
-    if (!editingNews) return
-    
-    try {
-      const response = await fetch('/api/admin/investment-news', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer admin-token-2024'
-        },
-        body: JSON.stringify({ ...newsForm, id: editingNews._id })
-      })
-      
-      if (response.ok) {
-        alert('Investment news updated successfully!')
-        setNewsForm({ title: '', content: '', category: 'general', importance: 'normal' })
-        setEditingNews(null)
-        setShowNewsForm(false)
-        fetchInvestmentNews()
-      } else {
-        const errorData = await response.json()
-        alert(`Failed to update news: ${errorData.error}`)
-      }
-    } catch (error) {
-      console.error('Error updating news:', error)
-      alert('Failed to update news')
-    }
-  }
-
-  const handleDeleteNews = async (newsId: string) => {
-    if (!confirm('Are you sure you want to delete this news article?')) return
-    
-    try {
-      const response = await fetch('/api/admin/investment-news', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer admin-token-2024'
-        },
-        body: JSON.stringify({ id: newsId })
-      })
-      
-      if (response.ok) {
-        alert('Investment news deleted successfully!')
-        fetchInvestmentNews()
-      } else {
-        const errorData = await response.json()
-        alert(`Failed to delete news: ${errorData.error}`)
-      }
-    } catch (error) {
-      console.error('Error deleting news:', error)
-      alert('Failed to delete news')
-    }
-  }
-
-  const handleEditNews = (news: any) => {
-    setEditingNews(news)
-    setNewsForm({
-      title: news.title,
-      content: news.content,
-      category: news.category,
-      importance: news.importance
-    })
-    setShowNewsForm(true)
-  }
-
   // Handle notification click
   const handleNotificationClick = async (notification: any) => {
     // Mark as read
@@ -487,27 +361,47 @@ export default function AdminDashboard() {
   }
 
   const fetchPendingDeposits = async () => {
+    console.log('=== ADMIN DASHBOARD: FETCHING PENDING DEPOSITS ===')
+    console.log('Timestamp:', new Date().toISOString())
+    
     try {
-      console.log('Fetching pending deposits...')
+      console.log('Making request to /api/admin/pending-deposits')
       const response = await fetch('/api/admin/pending-deposits', {
         headers: {
           'Authorization': 'Bearer admin-token'
         }
       })
       
-      console.log('Pending deposits response status:', response.status)
+      console.log('Response status:', response.status)
+      console.log('Response headers:', response.headers)
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Pending deposits data:', data)
+        console.log('Pending deposits data received:', data)
+        console.log('Number of pending deposits:', data.pendingDeposits?.length || 0)
         setPendingDeposits(data.pendingDeposits || [])
-        console.log('Set pending deposits:', data.pendingDeposits?.length || 0, 'items')
+        console.log('=== ADMIN DASHBOARD: PENDING DEPOSITS FETCH SUCCESS ===')
       } else {
+        console.error('=== ADMIN DASHBOARD: PENDING DEPOSITS FETCH ERROR ===')
+        console.error('Response status:', response.status)
+        console.error('Response.statusText:', response.statusText)
+        
+        // Try to get error details
         const errorText = await response.text()
-        console.error('Failed to fetch pending deposits:', response.status, errorText)
+        console.error('Error response body:', errorText)
+        
+        // Set empty array to prevent UI issues
+        setPendingDeposits([])
       }
     } catch (error) {
-      console.error('Error fetching pending deposits:', error)
+      console.error('=== ADMIN DASHBOARD: PENDING DEPOSITS FETCH CATCH ERROR ===')
+      console.error('Full error:', error)
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+      console.error('Timestamp:', new Date().toISOString())
+      
+      // Set empty array to prevent UI issues
+      setPendingDeposits([])
     }
   }
 
@@ -688,21 +582,15 @@ export default function AdminDashboard() {
       console.log('Response status:', response.status)
       console.log('Response ok:', response.ok)
       
-      const rawBody = await response.text()
-      let responseData: any = null
-      try {
-        responseData = rawBody ? JSON.parse(rawBody) : null
-      } catch {
-        responseData = { error: 'Invalid response' }
-      }
-      
       if (response.ok) {
+        const responseData = await response.json()
         console.log('Response data:', responseData)
         await fetchDashboardData()
         alert(`User ${action} successful`)
       } else {
-        console.error('API Error:', responseData)
-        alert(`Failed to ${action} user: ${responseData.error || 'Unknown error'}`)
+        const errorData = await response.json()
+        console.error('API Error:', errorData)
+        alert(`Failed to ${action} user: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Network error:', error)
@@ -901,7 +789,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           userId: depositSelectedUser.firebaseUid || depositSelectedUser._id,
           amount: parseFloat(depositAmount),
-          description: `Admin deposit of XAF ${depositAmount}`,
+          description: `Admin deposit of $${depositAmount}`,
           method: 'admin'
         })
       })
@@ -909,7 +797,7 @@ export default function AdminDashboard() {
       if (response.ok) {
         const data = await response.json()
         console.log('Deposit processed:', data)
-        alert(`Successfully deposited XAF ${depositAmount} to ${data.user.fullName}`)
+        alert(`Successfully deposited $${depositAmount} to ${data.user.fullName}`)
         
         // Reset form
         setDepositSelectedUser(null)
@@ -1210,7 +1098,7 @@ export default function AdminDashboard() {
                     ) : (
                       notifications.map((notification) => (
                         <div
-                          key={notification.id}
+                          key={notification._id}
                           onClick={() => handleNotificationClick(notification)}
                           className={`p-4 border-b border-white/10 cursor-pointer transition-colors hover:bg-white/5 ${
                             !notification.read ? 'bg-purple-500/10' : ''
@@ -1226,7 +1114,7 @@ export default function AdminDashboard() {
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">{notification.message}</p>
                               <p className="text-xs text-gray-400 mt-1">
-                                {new Date(notification.timestamp).toLocaleString()}
+                                {new Date(notification.createdAt).toLocaleString()}
                               </p>
                             </div>
                           </div>
@@ -1264,7 +1152,6 @@ export default function AdminDashboard() {
               { id: 'deposit', label: 'Deposit', icon: DollarSign },
               { id: 'deposit-verification', label: 'Deposit Verification', icon: CheckCircle },
               { id: 'withdrawals', label: 'Withdrawals', icon: ArrowUpLeft },
-              { id: 'investment-news', label: 'Investment News', icon: FileText },
               { id: 'chat', label: 'Live Chat', icon: MessageCircle },
               { id: 'analytics', label: 'Analytics', icon: BarChart3 },
               { id: 'settings', label: 'Settings', icon: Settings }
@@ -1415,7 +1302,7 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-sm font-mono">
-                              {user._id || 'N/A'}
+                              {user.uniqueId || 'N/A'}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
@@ -1518,7 +1405,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center space-x-2">
                               <div className="font-medium">{user.fullName}</div>
                               <div className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs font-mono">
-                                {user._id || 'N/A'}
+                                {user.uniqueId || 'N/A'}
                               </div>
                             </div>
                             <div className="text-sm text-gray-400">{user.email}</div>
@@ -1543,11 +1430,11 @@ export default function AdminDashboard() {
                       <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                         <div className="font-medium text-purple-300">{depositSelectedUser.fullName}</div>
                         <div className="text-sm text-gray-400">{depositSelectedUser.email}</div>
-                        <div className="text-sm text-gray-400">Current Balance: XAF {depositSelectedUser.balance?.toFixed(2) || '0.00'}</div>
+                        <div className="text-sm text-gray-400">Current Balance: ${depositSelectedUser.balance?.toFixed(2) || '0.00'}</div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Amount (XAF)</label>
+                        <label className="block text-sm font-medium text-gray-400 mb-1">Amount ($)</label>
                         <input
                           type="number"
                           value={depositAmount}
@@ -1562,7 +1449,7 @@ export default function AdminDashboard() {
                       <div>
                         <div className="text-sm text-gray-400 mb-2">New Balance:</div>
                         <div className="text-2xl font-bold text-green-400">
-                          XAF {((depositSelectedUser.balance || 0) + (parseFloat(depositAmount) || 0)).toFixed(2)}
+                          ${((depositSelectedUser.balance || 0) + (parseFloat(depositAmount) || 0)).toFixed(2)}
                         </div>
                       </div>
 
@@ -1571,7 +1458,7 @@ export default function AdminDashboard() {
                         disabled={depositLoading || !depositAmount || parseFloat(depositAmount) <= 0}
                         className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors text-white font-medium"
                       >
-                        {depositLoading ? 'Processing...' : `Deposit XAF ${depositAmount || '0.00'}`}
+                        {depositLoading ? 'Processing...' : `Deposit $${depositAmount || '0.00'}`}
                       </button>
                     </div>
                   ) : (
@@ -2357,187 +2244,6 @@ export default function AdminDashboard() {
                       <div className="w-5 h-5 bg-white rounded-full absolute left-0.5 top-0.5"></div>
                     </button>
                   </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Investment News Tab */}
-          {activeTab === 'investment-news' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold">Investment News Management</h2>
-                <button
-                  onClick={() => {
-                    setEditingNews(null)
-                    setNewsForm({ title: '', content: '', category: 'general', importance: 'normal' })
-                    setShowNewsForm(true)
-                  }}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center space-x-2"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Create News</span>
-                </button>
-              </div>
-
-              {/* News Form Modal */}
-              {showNewsForm && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-                  onClick={() => setShowNewsForm(false)}
-                >
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="bg-white/10 backdrop-blur-md rounded-2xl p-6 max-w-2xl w-full border border-white/20"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-bold">
-                        {editingNews ? 'Edit News Article' : 'Create News Article'}
-                      </h3>
-                      <button
-                        onClick={() => setShowNewsForm(false)}
-                        className="p-2 rounded-lg bg-white/10 hover:bg-white/20"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Title</label>
-                        <input
-                          type="text"
-                          value={newsForm.title}
-                          onChange={(e) => setNewsForm({ ...newsForm, title: e.target.value })}
-                          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-purple-400 text-white"
-                          placeholder="Enter news title"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Content</label>
-                        <textarea
-                          value={newsForm.content}
-                          onChange={(e) => setNewsForm({ ...newsForm, content: e.target.value })}
-                          className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-purple-400 text-white h-32 resize-none"
-                          placeholder="Enter news content"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Category</label>
-                          <select
-                            value={newsForm.category}
-                            onChange={(e) => setNewsForm({ ...newsForm, category: e.target.value })}
-                            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-purple-400 text-white"
-                          >
-                            <option value="general">General</option>
-                            <option value="markets">Markets</option>
-                            <option value="opportunities">Opportunities</option>
-                            <option value="analysis">Analysis</option>
-                            <option value="alerts">Alerts</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Importance</label>
-                          <select
-                            value={newsForm.importance}
-                            onChange={(e) => setNewsForm({ ...newsForm, importance: e.target.value })}
-                            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-purple-400 text-white"
-                          >
-                            <option value="low">Low</option>
-                            <option value="normal">Normal</option>
-                            <option value="high">High</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end space-x-2">
-                        <button
-                          onClick={() => setShowNewsForm(false)}
-                          className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={editingNews ? handleUpdateNews : handleCreateNews}
-                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
-                        >
-                          {editingNews ? 'Update' : 'Create'}
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-
-              {/* News List */}
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20">
-                <h3 className="text-xl font-semibold mb-4">Published News Articles</h3>
-                <div className="space-y-4">
-                  {investmentNews.length === 0 ? (
-                    <div className="text-center text-gray-400 py-8">
-                      <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p>No news articles found</p>
-                    </div>
-                  ) : (
-                    investmentNews.map((article) => (
-                      <motion.div
-                        key={article._id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="bg-white/5 rounded-lg p-4 border border-white/10"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h4 className="font-semibold text-white">{article.title}</h4>
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                article.importance === 'high' ? 'bg-red-500/20 text-red-400' :
-                                article.importance === 'normal' ? 'bg-blue-500/20 text-blue-400' :
-                                'bg-gray-500/20 text-gray-400'
-                              }`}>
-                                {article.importance}
-                              </span>
-                              <span className="px-2 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400">
-                                {article.category}
-                              </span>
-                            </div>
-                            <p className="text-gray-300 text-sm mb-2 line-clamp-2">{article.content}</p>
-                            <p className="text-xs text-gray-400">
-                              Created: {new Date(article.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="flex space-x-2 ml-4">
-                            <button
-                              onClick={() => handleEditNews(article)}
-                              className="p-2 bg-blue-600/20 hover:bg-blue-600/30 rounded-lg transition-colors"
-                              title="Edit news"
-                            >
-                              <FileText className="w-4 h-4 text-blue-400" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteNews(article._id)}
-                              className="p-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg transition-colors"
-                              title="Delete news"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-400" />
-                            </button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))
-                  )}
                 </div>
               </div>
             </motion.div>

@@ -4,9 +4,27 @@ import { ArrowLeft, TrendingUp, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { initializeApp } from 'firebase/app'
 
-// Firebase configuration is handled in lib/firebase.ts
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
+
+// Initialize Firebase app
+let app
+try {
+  app = initializeApp(firebaseConfig)
+} catch (error) {
+  // App already initialized
+  console.log('Firebase app already initialized')
+}
 
 export default function GetStartedPage() {
   const router = useRouter()

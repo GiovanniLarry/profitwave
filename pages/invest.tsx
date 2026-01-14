@@ -4,10 +4,24 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faWallet } from '@fortawesome/free-solid-svg-icons'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import { getAuth } from 'firebase/auth'
+import { initializeApp, getApps } from 'firebase/app'
 import { ArrowLeft, TrendingUp, DollarSign, Home, User, ChevronRight, Clock, Shield, Star } from 'lucide-react'
-import { auth } from '../lib/firebase'
 
-// Firebase configuration is handled in lib/firebase.ts
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+}
+
+if (!getApps().length) {
+  initializeApp(firebaseConfig)
+}
 
 interface InvestmentPlan {
   id: string
@@ -34,6 +48,7 @@ const InvestPage = () => {
 
   // Check authentication status on component mount
   useEffect(() => {
+    const auth = getAuth()
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser)
       if (currentUser) {
@@ -83,29 +98,6 @@ const InvestPage = () => {
     EUR: '€',
     XAF: 'XAF',
     YEN: '¥'
-  }
-
-  // Helper function to convert and format amounts properly
-  const convertAmount = (amount: number, fromCurrency: string, toCurrency: string) => {
-    if (fromCurrency === toCurrency) return amount
-    
-    // Convert from XAF to target currency
-    const converted = amount * conversionRates[toCurrency as keyof typeof conversionRates]
-    
-    // For very small converted amounts, show more precision but don't round to 0
-    if (converted < 1) {
-      return Math.round(converted * 100) / 100
-    }
-    
-    return Math.round(converted)
-  }
-
-  // Helper function to format amount display
-  const formatAmount = (amount: number, currency: string) => {
-    if (amount < 1) {
-      return `${currencySymbols[currency as keyof typeof currencySymbols]}${amount.toFixed(2)}`
-    }
-    return `${currencySymbols[currency as keyof typeof currencySymbols]}${amount.toLocaleString()}`
   }
 
   const baseInvestmentPlans: InvestmentPlan[] = [
@@ -245,10 +237,10 @@ const InvestPage = () => {
     // Convert investment amounts based on selected currency
     const convertedPlans = baseInvestmentPlans.map(plan => ({
       ...plan,
-      minAmount: convertAmount(plan.minAmount, 'XAF', selectedCurrency),
-      maxAmount: convertAmount(plan.maxAmount, 'XAF', selectedCurrency),
-      returnAmount: convertAmount(plan.returnAmount, 'XAF', selectedCurrency),
-      dailyReturn: convertAmount(plan.dailyReturn, 'XAF', selectedCurrency)
+      minAmount: Math.round(plan.minAmount * conversionRates[selectedCurrency]),
+      maxAmount: Math.round(plan.maxAmount * conversionRates[selectedCurrency]),
+      returnAmount: Math.round(plan.returnAmount * conversionRates[selectedCurrency]),
+      dailyReturn: Math.round(plan.dailyReturn * conversionRates[selectedCurrency])
     }))
     setInvestmentPlans(convertedPlans)
     setLoading(false)
@@ -376,7 +368,7 @@ const InvestPage = () => {
                       <div className="text-center mb-4">
                         <div className="text-sm text-gray-400 mb-2">Exclusive Investment Amount</div>
                         <div className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                          {formatAmount(plan.minAmount, selectedCurrency)}
+                          {currencySymbols[selectedCurrency]}{plan.minAmount.toLocaleString()}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">Fixed Amount Investment</div>
                       </div>
@@ -396,7 +388,7 @@ const InvestPage = () => {
                             </div>
                             <div className="text-right">
                               <div className="text-lg font-bold text-green-400">+25%</div>
-                              <div className="text-xs text-gray-500">{formatAmount(plan.minAmount * 0.25, selectedCurrency)}</div>
+                              <div className="text-xs text-gray-500">{currencySymbols[selectedCurrency]}{(plan.minAmount * 0.25).toLocaleString()}</div>
                             </div>
                           </div>
                         </div>
@@ -414,7 +406,7 @@ const InvestPage = () => {
                             </div>
                             <div className="text-right">
                               <div className="text-lg font-bold text-purple-400">+50%</div>
-                              <div className="text-xs text-gray-500">{formatAmount(plan.minAmount * 0.50, selectedCurrency)}</div>
+                              <div className="text-xs text-gray-500">{currencySymbols[selectedCurrency]}{(plan.minAmount * 0.50).toLocaleString()}</div>
                             </div>
                           </div>
                         </div>
@@ -429,7 +421,7 @@ const InvestPage = () => {
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-xl font-bold text-yellow-400">{formatAmount(plan.returnAmount, selectedCurrency)}</div>
+                              <div className="text-xl font-bold text-yellow-400">{currencySymbols[selectedCurrency]}{plan.returnAmount.toLocaleString()}</div>
                               <div className="text-xs text-gray-500">Principal + 50% Returns</div>
                             </div>
                           </div>
@@ -442,11 +434,11 @@ const InvestPage = () => {
                       <div className="mb-4">
                         <div className="text-sm text-gray-400 mb-1">Investment Amount</div>
                         <div className="text-2xl font-bold">
-                          {formatAmount(plan.minAmount, selectedCurrency)}
+                          {currencySymbols[selectedCurrency]}{plan.minAmount.toLocaleString()}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {selectedCurrency === 'EUR' ? `(~€${(6500 * conversionRates['EUR']).toFixed(2)})` : 
-                           selectedCurrency === 'USD' ? `(~$${(6500 * conversionRates['USD']).toFixed(2)})` : ''}
+                          {selectedCurrency === 'EUR' ? `~${Math.round(plan.minAmount * conversionRates['EUR'])} EUR` : 
+                           selectedCurrency === 'USD' ? `~${Math.round(plan.minAmount * conversionRates['USD'])} USD` : ''}
                         </div>
                       </div>
 
@@ -454,7 +446,7 @@ const InvestPage = () => {
                       <div className="mb-4">
                         <div className="text-sm text-gray-400 mb-1">Total Returns</div>
                         <div className="text-3xl font-bold text-green-400">
-                          {formatAmount(plan.returnAmount, selectedCurrency)}
+                          {currencySymbols[selectedCurrency]}{plan.returnAmount.toLocaleString()}
                         </div>
                         <div className="text-sm text-gray-500">
                           +25% in 14 days, +50% after 28 days

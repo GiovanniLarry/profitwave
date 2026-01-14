@@ -2,26 +2,25 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Mail, Phone, Eye, EyeOff, CheckCircle, AlertCircle, ArrowRight, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
-import { signUpWithEmail, signUpWithGoogle, verifyOTP, getErrorMessage } from '../lib/firebase'
+import { signUpWithEmail, signUpWithGoogle, signUpWithFacebook, verifyOTP, getErrorMessage } from '../lib/firebase'
 import { useRouter } from 'next/router'
 
 export default function SignUpPage() {
   const router = useRouter()
-  const [signUpMethod, setSignUpMethod] = useState<'email' | 'google' | null>(null)
+  const [signUpMethod, setSignUpMethod] = useState<'email' | 'google' | 'facebook' | null>(null)
   const [formData, setFormData] = useState({
+    fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
     agreeTerms: false,
-    otp: '',
-    referralCode: ''
+    otp: ''
   })
   const [errors, setErrors] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [referralCode, setReferralCode] = useState('')
 
   // Calculate password strength
   const calculatePasswordStrength = (password: string) => {
@@ -92,12 +91,8 @@ export default function SignUpPage() {
         nationality: '', // Will be filled in complete-profile
         authProvider: 'email',
         emailVerified: user.emailVerified || false,
-        profileCompleted: false, // Mark as incomplete until profile is completed
-        referralCode: formData.referralCode // Add referral code to user data
+        profileCompleted: false // Mark as incomplete until profile is completed
       }
-
-      console.log('📝 User data being sent to API:', userData)
-      console.log('🔗 Referral code included:', formData.referralCode)
 
       const response = await fetch('/api/users', {
         method: 'POST',
@@ -171,7 +166,53 @@ export default function SignUpPage() {
     }
   }
 
-  
+  const handleFacebookSignUp = async () => {
+    setIsLoading(true)
+    setErrors([])
+
+    try {
+      const user = await signUpWithFacebook()
+      console.log('Facebook sign up successful:', user)
+      
+      // Save user email to database immediately after Firebase signup
+      const userData = {
+        email: user.email || '',
+        firebaseUid: user.uid,
+        fullName: user.displayName || '',
+        dateOfBirth: new Date(), // Temporary, will be updated in complete-profile
+        age: 0, // Temporary, will be updated in complete-profile
+        gender: '', // Will be filled in complete-profile
+        nationality: '', // Will be filled in complete-profile
+        authProvider: 'facebook',
+        emailVerified: user.emailVerified || false,
+        profileCompleted: false // Mark as incomplete until profile is completed
+      }
+
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      })
+
+      if (!response.ok) {
+        console.error('Failed to save user to database, but Firebase account was created')
+        // Don't throw error here since Firebase account was created successfully
+      } else {
+        console.log('User email saved to database successfully')
+      }
+
+      alert('Account created successfully with Facebook!')
+      router.push('/complete-profile')
+    } catch (error: any) {
+      const errorMessage = getErrorMessage(error)
+      setErrors([errorMessage])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Simple Header */}
@@ -238,7 +279,23 @@ export default function SignUpPage() {
                     <span className="text-white font-semibold">Continue with Google</span>
                   </motion.button>
 
-                  
+                  <motion.button
+                    onClick={handleFacebookSignUp}
+                    className={`w-full p-3 rounded-xl border-2 transition-all duration-200 flex items-center justify-center space-x-3 ${
+                      signUpMethod === 'facebook' 
+                        ? 'border-purple-500 bg-purple-500/20' 
+                        : 'border-white/20 hover:border-purple-500/50 bg-white/5'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={isLoading}
+                  >
+                    <div className="w-4 h-4 bg-blue-600 rounded-sm flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">f</span>
+                    </div>
+                    <span className="text-white font-semibold">Continue with Facebook</span>
+                  </motion.button>
+
                   <motion.button
                     onClick={() => setSignUpMethod('email')}
                     className={`w-full p-3 rounded-xl border-2 transition-all duration-200 flex items-center justify-center space-x-3 ${
