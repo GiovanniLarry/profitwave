@@ -44,11 +44,11 @@ export default function DepositConfirmation() {
     'orange-money': {
       name: 'Orange Money',
       merchantName: 'MONIQUE NADEGE MECK',
-      merchantNumber: '655621356',
+      merchantNumber: '237655621356',
       instructions: [
         'Go to your Orange Money app',
         'Select "Send Money"',
-        'Enter merchant number: 655621356',
+        'Enter merchant number: 237655621356',
         'Enter the amount',
         'Confirm transaction with your PIN',
         'Take a screenshot showing the payment ID (this is the transaction ID you receive in the confirmation message)'
@@ -57,11 +57,11 @@ export default function DepositConfirmation() {
     'mtn-mobile-money': {
       name: 'MTN Mobile Money',
       merchantName: 'DELPHINE NONINDONG',
-      merchantNumber: '674281162',
+      merchantNumber: '237674281152',
       instructions: [
         'Go to your MTN Mobile Money app',
         'Select "Send Money"',
-        'Enter merchant number: 674281162',
+        'Enter merchant number: 237674281152',
         'Enter the amount',
         'Confirm transaction with your PIN',
         'Take a screenshot showing the payment ID (this is the transaction ID you receive in the confirmation message)'

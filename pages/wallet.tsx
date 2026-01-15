@@ -206,12 +206,12 @@ export default function Wallet() {
         'orange-money': {
           name: 'Orange Money',
           merchantName: 'MONIQUE NADEGE MECK',
-          merchantNumber: '655621356'
+          merchantNumber: '237655621356'
         },
         'mtn-mobile-money': {
           name: 'MTN Mobile Money',
           merchantName: 'DELPHINE NONINDONG',
-          merchantNumber: '674281162'
+          merchantNumber: '237674281152'
         }
       }
       
@@ -374,13 +374,13 @@ export default function Wallet() {
                       {method.id === 'orange-money' && (
                         <>
                           <p><span className="font-semibold">Contact:</span> MONIQUE NADEGE MECK</p>
-                          <p><span className="font-semibold">Phone:</span> 655621356</p>
+                          <p><span className="font-semibold">Phone:</span> 237655621356</p>
                         </>
                       )}
                       {method.id === 'mtn-mobile-money' && (
                         <>
                           <p><span className="font-semibold">Contact:</span> DELPHINE NONINDONG</p>
-                          <p><span className="font-semibold">Phone:</span> 674281162</p>
+                          <p><span className="font-semibold">Phone:</span> 237674281152</p>
                         </>
                       )}
                     </div>
