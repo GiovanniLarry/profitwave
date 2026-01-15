@@ -1,6 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { MongoClient } from 'mongodb'
 
+// Debug endpoint for troubleshooting production issues
+// Updated: 2025-01-15 - Trigger deployment refresh
+
 // MongoDB connection
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/profitwave'
 const client = new MongoClient(uri)
