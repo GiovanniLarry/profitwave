@@ -1302,7 +1302,7 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-sm font-mono">
-                              {user.uniqueId || 'N/A'}
+                              {deposit.userInfo?.uniqueId || 'N/A'}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
@@ -1405,7 +1405,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center space-x-2">
                               <div className="font-medium">{user.fullName}</div>
                               <div className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs font-mono">
-                                {user.uniqueId || 'N/A'}
+                                {deposit.userInfo?.uniqueId || 'N/A'}
                               </div>
                             </div>
                             <div className="text-sm text-gray-400">{user.email}</div>
