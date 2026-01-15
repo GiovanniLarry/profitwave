@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, createUserWithEmailAndPassword, updateProfile, User, sendEmailVerification, signInWithPhoneNumber, RecaptchaVerifier, OAuthProvider, sendPasswordResetEmail } from 'firebase/auth'
 
 // Your web app's Firebase configuration
@@ -13,7 +13,7 @@ const firebaseConfig = {
 }
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig)
+let app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 const auth = getAuth(app)
 const googleProvider = new GoogleAuthProvider()
 const facebookProvider = new FacebookAuthProvider()
