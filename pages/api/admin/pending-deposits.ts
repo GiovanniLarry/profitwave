@@ -96,16 +96,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           user = await usersCollection.findOne({ firebaseUid: deposit.userId })
           console.log('Tried firebaseUid, found user:', !!user)
           
-          // If not found, try _id
-          if (!user) {
-            try {
-              user = await usersCollection.findOne({ _id: new ObjectId(deposit.userId) })
-              console.log('Tried _id, found user:', !!user)
-            } catch (e) {
-              console.log('Invalid ObjectId for userId:', deposit.userId)
-            }
-          }
-          
           // If still not found, try uid field
           if (!user) {
             user = await usersCollection.findOne({ uid: deposit.userId })
@@ -116,6 +106,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (!user) {
             user = await usersCollection.findOne({ email: deposit.userId })
             console.log('Tried email, found user:', !!user)
+          }
+          
+          // Try _id with better error handling
+          if (!user) {
+            try {
+              // Only try ObjectId if it looks like a valid ObjectId
+              if (deposit.userId && typeof deposit.userId === 'string' && deposit.userId.length === 24 && /^[0-9a-fA-F]{24}$/.test(deposit.userId)) {
+                user = await usersCollection.findOne({ _id: new ObjectId(deposit.userId) })
+                console.log('Tried _id with valid ObjectId, found user:', !!user)
+              } else {
+                console.log('Skipping ObjectId conversion - invalid format:', deposit.userId)
+              }
+            } catch (e) {
+              console.log('ObjectId conversion failed:', e.message, 'for userId:', deposit.userId)
+            }
           }
           
           // Get or generate unique ID for this user
