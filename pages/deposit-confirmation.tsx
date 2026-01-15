@@ -29,7 +29,6 @@ interface DepositData {
   merchantNumber: string
 }
 
-// Force rebuild - Updated: 2025-01-15 21:25 - MERCHANT INFO FIX
 export default function DepositConfirmation() {
   const [user, setUser] = useState<any>(null)
   const [depositData, setDepositData] = useState<DepositData | null>(null)
